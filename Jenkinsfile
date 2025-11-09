@@ -2,12 +2,6 @@ pipeline {
     agent any
 
     stages {
-        stage('Checkout') {
-            steps {
-                git 'https://github.com/AryakaLeorgi/tkti-pipeline-2.git'
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 sh 'python3 -m venv venv'
@@ -43,4 +37,3 @@ pipeline {
         }
     }
 }
-
