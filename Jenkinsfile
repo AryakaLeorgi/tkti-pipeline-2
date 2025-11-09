@@ -11,9 +11,14 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh '. venv/bin/activate && pytest --maxfail=1 --disable-warnings -q'
+                sh '''
+                    . venv/bin/activate
+                    export PYTHONPATH=$PYTHONPATH:$(pwd)/src
+                    pytest --maxfail=1 --disable-warnings -q
+                '''
             }
         }
+
 
         stage('Build Simulation') {
             steps {
