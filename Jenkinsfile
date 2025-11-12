@@ -11,10 +11,17 @@ pipeline {
             steps {
                 script {
                     def start = System.currentTimeMillis()
-                    sh 'python3 -m venv venv'
-                    sh '. venv/bin/activate && pip install -r requirements.txt || true'
-                    def duration = (System.currentTimeMillis() - start) / 1000
-                    writeFile file: 'install_time.txt', text: "${duration}"
+                    // Simulate random install time between 2–10 seconds
+                    def installTime = 2 + new Random().nextInt(8)
+                    sh "sleep ${installTime}"
+                    
+                    // Simulate random chance of slow dependency
+                    if (new Random().nextInt(100) < 10) { // 10% chance
+                        sh "sleep 3" // extra slowdown
+                        echo "⚠️ Simulated slow dependency download!"
+                    }
+
+                    writeFile file: 'install_time.txt', text: "${installTime}"
                 }
             }
         }
@@ -23,11 +30,20 @@ pipeline {
             steps {
                 script {
                     def start = System.currentTimeMillis()
-                    def result = (new Random().nextInt(100) < 85) ? 0 : 1 // 15% failure chance
-                    sh "sleep 2" // simulate test duration
-                    def duration = (System.currentTimeMillis() - start) / 1000
-                    writeFile file: 'test_time.txt', text: "${duration}"
+
+                    // Random test duration between 1–5 sec
+                    def testTime = 1 + new Random().nextInt(5)
+                    sh "sleep ${testTime}"
+
+                    // Simulate 20% failure chance
+                    def result = (new Random().nextInt(100) < 80) ? 0 : 1
+                    if (result != 0) {
+                        echo "❌ Simulated test failure!"
+                    }
+
+                    writeFile file: 'test_time.txt', text: "${testTime}"
                     writeFile file: 'test_result.txt', text: "${result}"
+
                     if (result != 0) {
                         error("Tests failed (simulated)")
                     }
@@ -39,9 +55,16 @@ pipeline {
             steps {
                 script {
                     def start = System.currentTimeMillis()
-                    sh 'sleep 3'
-                    def duration = (System.currentTimeMillis() - start) / 1000
-                    writeFile file: 'build_time.txt', text: "${duration}"
+                    def buildTime = 2 + new Random().nextInt(6)
+                    sh "sleep ${buildTime}"
+
+                    // Random slowdown
+                    if (new Random().nextInt(100) < 15) {
+                        buildTime += 3
+                        echo "⚙️ Simulated build cache miss!"
+                    }
+
+                    writeFile file: 'build_time.txt', text: "${buildTime}"
                 }
             }
         }
@@ -50,9 +73,16 @@ pipeline {
             steps {
                 script {
                     def start = System.currentTimeMillis()
-                    sh 'sleep 2'
-                    def duration = (System.currentTimeMillis() - start) / 1000
-                    writeFile file: 'deploy_time.txt', text: "${duration}"
+                    def deployTime = 1 + new Random().nextInt(5)
+                    sh "sleep ${deployTime}"
+
+                    // Simulate 10% chance of deployment issue
+                    if (new Random().nextInt(100) < 10) {
+                        deployTime += 5
+                        echo "🚨 Simulated deployment slowdown!"
+                    }
+
+                    writeFile file: 'deploy_time.txt', text: "${deployTime}"
                 }
             }
         }
@@ -75,7 +105,7 @@ pipeline {
 
                 def line = "${timestamp},${install_time},${test_time},${test_result},${build_time},${deploy_time},${total_time}\n"
 
-                // ✅ Safe append using Jenkins pipeline functions (no sandbox violation)
+                // Append safely without sandbox issues
                 if (fileExists(METRICS_FILE)) {
                     def current = readFile(METRICS_FILE)
                     writeFile file: METRICS_FILE, text: current + line
