@@ -1,50 +1,54 @@
 pipeline {
     agent any
 
+    environment {
+        METRICS_FILE = "metrics.csv"
+        SIMULATIONS = 1000 // You can change this to 100 for faster testing
+    }
+
     stages {
-        stage('Simulate CI/CD Pipeline Metrics') {
+        stage('Simulate CI/CD Runs') {
             steps {
                 script {
-                    def csvFile = "${env.WORKSPACE}/pipeline_metrics.csv"
-                    def writer = new File(csvFile)
                     def random = new Random()
 
-                    // CSV header
-                    writer.write("Run,BuildTime,TestTime,DeployTime,TotalTime,Success,FailedStage,CommitSize,Developers,Timestamp\n")
-
-                    int totalRuns = 1000
-                    echo "🚀 Starting ${totalRuns} simulated CI/CD runs..."
-
-                    for (int i = 1; i <= totalRuns; i++) {
-
-                        // --- Simulate stage durations ---
-                        def buildTime = Math.max(30,  random.nextGaussian() * 15 + 100)   // build ~100s ±15s
-                        def testTime  = Math.max(10,  random.nextGaussian() * 10 + 60)    // test ~60s ±10s
-                        def deployTime = Math.max(5,  random.nextGaussian() * 5 + 30)     // deploy ~30s ±5s
-                        def totalTime = buildTime + testTime + deployTime
-
-                        // --- Simulate other metadata ---
-                        def commitSize = Math.max(1, (int)(random.nextGaussian() * 50 + 200)) // lines of code changed
-                        def developers = Math.max(1, (int)(random.nextGaussian() * 1.5 + 3))  // number of devs working
-
-                        // --- Simulate failures (10–15% chance) ---
-                        def success = random.nextInt(100) >= 12
-                        def failedStage = success ? "None" : ["Build", "Test", "Deploy"][random.nextInt(3)]
-
-                        // Timestamp
-                        def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
-
-                        // Write to CSV
-                        writer.append("${i},${String.format('%.2f', buildTime)},${String.format('%.2f', testTime)},${String.format('%.2f', deployTime)},${String.format('%.2f', totalTime)},${success},${failedStage},${commitSize},${developers},${timestamp}\n")
-
-                        // Progress logs
-                        if (i % 100 == 0) {
-                            echo "✅ Generated ${i} simulated runs..."
-                        }
+                    // If metrics file doesn't exist, write header
+                    if (!fileExists(METRICS_FILE)) {
+                        writeFile file: METRICS_FILE, text: "timestamp,install_time,build_time,test_time,deploy_time,total_time,test_result\n"
                     }
 
-                    writer.close()
-                    echo "🎉 Simulation complete! Metrics saved to ${csvFile}"
+                    echo "🚀 Starting ${SIMULATIONS} simulated CI/CD pipeline runs..."
+
+                    for (int i = 1; i <= SIMULATIONS; i++) {
+                        echo "===== Simulation Run #${i} ====="
+
+                        // Randomize stage durations (seconds)
+                        def install_time = (1 + random.nextDouble() * 8).round(3)
+                        def build_time = (2 + random.nextDouble() * 10).round(3)
+                        def test_time = (1 + random.nextDouble() * 12).round(3)
+                        def deploy_time = (0.5 + random.nextDouble() * 5).round(3)
+
+                        // Random failure chance (e.g. 15%)
+                        def test_result = random.nextDouble() < 0.15 ? 0 : 1
+
+                        // If failed, maybe deployment is skipped
+                        if (test_result == 0) {
+                            deploy_time = 0
+                        }
+
+                        // Compute total time
+                        def total_time = (install_time + build_time + test_time + deploy_time).round(3)
+                        def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
+
+                        // Build a CSV line
+                        def line = "${timestamp},${install_time},${build_time},${test_time},${deploy_time},${total_time},${test_result}\n"
+
+                        // Append to CSV
+                        def metricsFile = new File(METRICS_FILE)
+                        metricsFile.append(line)
+                    }
+
+                    echo "✅ Simulation complete. Results saved to ${METRICS_FILE}"
                 }
             }
         }
@@ -52,8 +56,8 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: 'pipeline_metrics.csv', onlyIfSuccessful: false
-            echo "📦 CSV file archived — you can download it from the Jenkins build artifacts."
+            archiveArtifacts artifacts: 'metrics.csv', fingerprint: true
+            echo "📊 Metrics archived for machine learning training."
         }
     }
 }
