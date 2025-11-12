@@ -3,51 +3,56 @@ pipeline {
 
     environment {
         METRICS_FILE = 'pipeline_metrics.csv'
-        RUN_COUNT = '6767'
+        MODEL_FILE = 'pipeline_success_model.pkl'
     }
 
     stages {
-        stage('Simulate CI/CD Runs') {
+        stage('Simulate Metrics') {
+            steps {
+                echo "Generating or using existing metrics..."
+                // Your previous simulation step or just reuse old file
+            }
+        }
+
+        stage('AI Predict Success') {
             steps {
                 script {
-                    def totalRuns = env.RUN_COUNT.toInteger()
-                    def random = new Random()
+                    // Example simulated data (you could compute or read from CSV)
+                    def buildTime = 3.5
+                    def testTime = 1.8
+                    def deployTime = 0.9
+                    def failureReason = "None"
 
-                    echo "🚀 Starting ${totalRuns} simulated CI/CD pipeline runs..."
-
-                    // Start with CSV header
-                    def csvData = "RunID,BuildTime,TestTime,DeployTime,Success,FailureReason\n"
-
-                    for (int i = 1; i <= totalRuns; i++) {
-                        // Randomly simulate times (seconds)
-                        def buildTime = (random.nextDouble() * 5 + 1).round(3)  // 1–6 seconds
-                        def testTime = (random.nextDouble() * 4 + 0.5).round(3) // 0.5–4.5 sec
-                        def deployTime = (random.nextDouble() * 3 + 0.2).round(3) // 0.2–3.2 sec
-
-                        // Success or fail (20% chance of failure)
-                        def success = random.nextDouble() > 0.2
-                        def failureReason = success ? "" : (
-                            ["UnitTestError", "IntegrationFail", "Timeout", "BuildScriptError"]
-                            [random.nextInt(4)]
-                        )
-
-                        // Append data to CSV string
-                        csvData += "${i},${buildTime},${testTime},${deployTime},${success ? 1 : 0},${failureReason}\n"
-                    }
-
-                    // Finally write it once
-                    writeFile file: env.METRICS_FILE, text: csvData
-
-                    echo "✅ Generated ${totalRuns} simulation records into ${env.METRICS_FILE}"
+                    echo "🤖 Running ML prediction..."
+                    sh """
+                        python3 predict_pipeline.py \
+                        --buildTime=${buildTime} \
+                        --testTime=${testTime} \
+                        --deployTime=${deployTime} \
+                        --failureReason=${failureReason}
+                    """
                 }
+            }
+        }
+
+        stage('Conditional Execution') {
+            when {
+                expression {
+                    // Optionally skip this stage if previous prediction failed
+                    // (Exit code from predict_pipeline.py can be used to fail/pause pipeline)
+                    true
+                }
+            }
+            steps {
+                echo "🚀 Proceeding with build/test/deploy since prediction passed."
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: 'pipeline_metrics.csv', fingerprint: true
-            echo "📊 Metrics archived for ML training."
+            archiveArtifacts artifacts: '*.csv,*.pkl', fingerprint: true
+            echo "📊 Metrics & model archived."
         }
     }
 }
