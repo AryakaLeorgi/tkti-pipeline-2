@@ -11,29 +11,34 @@ pipeline {
             steps {
                 script {
                     def totalRuns = env.RUN_COUNT.toInteger()
-                    def metricsFile = new File("${env.WORKSPACE}/${env.METRICS_FILE}")
                     def random = new Random()
 
                     echo "🚀 Starting ${totalRuns} simulated CI/CD pipeline runs..."
 
-                    // Create CSV header if file doesn't exist
-                    if (!metricsFile.exists()) {
-                        metricsFile.text = "RunID,BuildTime,SuccessRate,FailureReason\n"
-                    }
+                    // Start with CSV header
+                    def csvData = "RunID,BuildTime,TestTime,DeployTime,Success,FailureReason\n"
 
                     for (int i = 1; i <= totalRuns; i++) {
-                        def buildTime = 30 + random.nextInt(570) // seconds
+                        // Randomly simulate times (seconds)
+                        def buildTime = (random.nextDouble() * 5 + 1).round(3)  // 1–6 seconds
+                        def testTime = (random.nextDouble() * 4 + 0.5).round(3) // 0.5–4.5 sec
+                        def deployTime = (random.nextDouble() * 3 + 0.2).round(3) // 0.2–3.2 sec
+
+                        // Success or fail (20% chance of failure)
                         def success = random.nextDouble() > 0.2
                         def failureReason = success ? "" : (
                             ["UnitTestError", "IntegrationFail", "Timeout", "BuildScriptError"]
                             [random.nextInt(4)]
                         )
 
-                        // Append using Groovy file operator
-                        metricsFile << "${i},${buildTime},${success ? 1 : 0},${failureReason}\n"
+                        // Append data to CSV string
+                        csvData += "${i},${buildTime},${testTime},${deployTime},${success ? 1 : 0},${failureReason}\n"
                     }
 
-                    echo "✅ Simulation complete. Data written to ${metricsFile}"
+                    // Finally write it once
+                    writeFile file: env.METRICS_FILE, text: csvData
+
+                    echo "✅ Generated ${totalRuns} simulation records into ${env.METRICS_FILE}"
                 }
             }
         }
@@ -42,7 +47,7 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'pipeline_metrics.csv', fingerprint: true
-            echo "📊 Metrics archived for machine learning training."
+            echo "📊 Metrics archived for ML training."
         }
     }
 }
