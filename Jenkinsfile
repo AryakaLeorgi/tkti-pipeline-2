@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         METRICS_FILE = 'pipeline_metrics.csv'
-        RUN_COUNT = '1000'
+        RUN_COUNT = '6767'
     }
 
     stages {
