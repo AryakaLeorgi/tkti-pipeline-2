@@ -58,44 +58,49 @@ pipeline {
         }
     }
 
-post {
-    always {
-        script {
-            def safeRead = { filename ->
-                return fileExists(filename) ? readFile(filename).trim() : "0"
+    post {
+        always {
+            script {
+                // Helper to safely read files (returns "0" if missing)
+                def safeRead = { filename ->
+                    return fileExists(filename) ? readFile(filename).trim() : "0"
+                }
+
+                // Read stage metrics
+                def install_time = safeRead('install_time.txt')
+                def test_time = safeRead('test_time.txt')
+                def test_result = safeRead('test_result.txt')
+                def build_time = safeRead('build_time.txt')
+                def deploy_time = safeRead('deploy_time.txt')
+
+                // Compute total pipeline time
+                def total_time = (System.currentTimeMillis() - BUILD_START.toLong()) / 1000
+                def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
+
+                // Line to append to CSV
+                def line = "${timestamp},${install_time},${test_time},${test_result},${build_time},${deploy_time},${total_time}\n"
+
+                // Create CSV with headers if it doesn't exist
+                if (!fileExists(METRICS_FILE)) {
+                    writeFile file: METRICS_FILE, text: "timestamp,install_time,test_time,test_result,build_time,deploy_time,total_time\n"
+                }
+
+                // ✅ Append directly to metrics file
+                def metricsFile = new File(METRICS_FILE)
+                metricsFile.append(line)
+                println "✅ Metrics appended to ${METRICS_FILE}"
+
+                // Save metrics as a build artifact
+                archiveArtifacts artifacts: "${METRICS_FILE}", fingerprint: true
             }
-
-            def install_time = safeRead('install_time.txt')
-            def test_time = safeRead('test_time.txt')
-            def test_result = safeRead('test_result.txt')
-            def build_time = safeRead('build_time.txt')
-            def deploy_time = safeRead('deploy_time.txt')
-            def total_time = (System.currentTimeMillis() - BUILD_START.toLong()) / 1000
-            def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
-
-            def line = "${timestamp},${install_time},${test_time},${test_result},${build_time},${deploy_time},${total_time}\n"
-
-            if (!fileExists(METRICS_FILE)) {
-                writeFile file: METRICS_FILE, text: "timestamp,install_time,test_time,test_result,build_time,deploy_time,total_time\n"
-            }
-
-            // ✅ Directly append inside the pipeline itself
-            def metricsFile = new File(METRICS_FILE)
-            metricsFile.append(line)
-            println "✅ Metrics appended to ${METRICS_FILE}"
-
-            archiveArtifacts artifacts: "${METRICS_FILE}", fingerprint: true
         }
-    }
 
-    success {
-        echo '✅ Pipeline completed successfully!'
-    }
+        success {
+            echo '✅ Pipeline completed successfully!'
+        }
 
-    failure {
-        echo '❌ Pipeline failed (simulated or real)!'
-    }
-}
-
+        failure {
             echo '❌ Pipeline failed (simulated or real)!'
         }
+    }
+}
