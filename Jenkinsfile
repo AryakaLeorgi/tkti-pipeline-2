@@ -3,42 +3,34 @@ pipeline {
 
     environment {
         METRICS_FILE = 'pipeline_metrics.csv'
-        RUN_COUNT = '1000'  // still a string; we'll convert it later
+        RUN_COUNT = '1000'
     }
 
     stages {
         stage('Simulate CI/CD Runs') {
             steps {
                 script {
-                    // Convert RUN_COUNT to integer safely
                     def totalRuns = env.RUN_COUNT.toInteger()
+                    def metricsFile = new File("${env.WORKSPACE}/${env.METRICS_FILE}")
+                    def random = new Random()
 
                     echo "🚀 Starting ${totalRuns} simulated CI/CD pipeline runs..."
 
-                    def metricsFile = "${env.WORKSPACE}/${env.METRICS_FILE}"
-
-                    // Create CSV header if it doesn't exist
-                    if (!fileExists(metricsFile)) {
-                        writeFile file: metricsFile, text: "RunID,BuildTime,SuccessRate,FailureReason\n"
+                    // Create CSV header if file doesn't exist
+                    if (!metricsFile.exists()) {
+                        metricsFile.text = "RunID,BuildTime,SuccessRate,FailureReason\n"
                     }
 
-                    def random = new Random()
-
                     for (int i = 1; i <= totalRuns; i++) {
-                        // Simulate random build time (30–600 seconds)
-                        def buildTime = 30 + random.nextInt(570)
-
-                        // Simulate success/failure (20% failure rate)
+                        def buildTime = 30 + random.nextInt(570) // seconds
                         def success = random.nextDouble() > 0.2
-
                         def failureReason = success ? "" : (
                             ["UnitTestError", "IntegrationFail", "Timeout", "BuildScriptError"]
                             [random.nextInt(4)]
                         )
 
-                        // Append metrics line
-                        def csvLine = "${i},${buildTime},${success ? 1 : 0},${failureReason}\n"
-                        writeFile file: metricsFile, text: csvLine, append: true
+                        // Append using Groovy file operator
+                        metricsFile << "${i},${buildTime},${success ? 1 : 0},${failureReason}\n"
                     }
 
                     echo "✅ Simulation complete. Data written to ${metricsFile}"
