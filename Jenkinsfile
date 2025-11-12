@@ -1,36 +1,34 @@
 pipeline {
     agent any
 
-    environment {
-        METRICS_FILE = 'pipeline_metrics.csv'
-        MODEL_FILE = 'pipeline_success_model.pkl'
-    }
-
     stages {
         stage('Simulate Metrics') {
             steps {
                 echo "Generating or using existing metrics..."
-                // Your previous simulation step or just reuse old file
             }
         }
 
         stage('AI Predict Success') {
             steps {
+                echo "🤖 Running ML prediction..."
                 script {
-                    // Example simulated data (you could compute or read from CSV)
-                    def buildTime = 3.5
-                    def testTime = 1.8
-                    def deployTime = 0.9
-                    def failureReason = "None"
+                    def output = sh(
+                        script: "python3 predict_pipeline.py --buildTime=3.5 --testTime=1.8 --deployTime=0.9 --failureReason=None",
+                        returnStdout: true
+                    ).trim()
 
-                    echo "🤖 Running ML prediction..."
-                    sh """
-                        python3 predict_pipeline.py \
-                        --buildTime=${buildTime} \
-                        --testTime=${testTime} \
-                        --deployTime=${deployTime} \
-                        --failureReason=${failureReason}
-                    """
+                    echo "🔍 Model Output:\n${output}"
+
+                    // Extract numeric prediction (0 or 1)
+                    def match = (output =~ /Prediction result: (\d)/)
+                    def prediction = match ? match[0][1].toInteger() : -1
+
+                    if (prediction == 1) {
+                        echo "✅ ML predicts SUCCESS — continuing pipeline..."
+                    } else {
+                        echo "🛑 ML predicts FAILURE — aborting pipeline!"
+                        error("Aborted by ML prediction")
+                    }
                 }
             }
         }
@@ -38,9 +36,8 @@ pipeline {
         stage('Conditional Execution') {
             when {
                 expression {
-                    // Optionally skip this stage if previous prediction failed
-                    // (Exit code from predict_pipeline.py can be used to fail/pause pipeline)
-                    true
+                    // Only run if previous stage didn't fail
+                    currentBuild.resultIsBetterOrEqualTo("SUCCESS")
                 }
             }
             steps {
@@ -51,8 +48,14 @@ pipeline {
 
     post {
         always {
-            archiveArtifacts artifacts: '*.csv,*.pkl', fingerprint: true
-            echo "📊 Metrics & model archived."
+            echo "📦 Archiving ML artifacts..."
+            archiveArtifacts artifacts: 'pipeline_success_model4.pkl, model_columns.pkl, model_metrics.json, feature_importance.png, prediction_output.txt', fingerprint: true
+        }
+        success {
+            echo "✅ Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed due to ML prediction or other error."
         }
     }
 }
