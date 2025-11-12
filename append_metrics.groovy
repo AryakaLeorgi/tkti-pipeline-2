@@ -1,6 +1,19 @@
-def newMetrics = """2025-11-12 23:59:10,4.586,2.172,0,3.516,2.153,13.675
-"""
+// append_metrics.groovy
+// This script appends the latest pipeline metrics into a CSV file for analysis.
 
-def file = new File('pipeline_metrics.csv')
-file.append(newMetrics)
-EOF
+def metricsFile = new File("pipeline_metrics.csv")
+
+if (!metricsFile.exists()) {
+    metricsFile.write("build_number,stage,stage_duration,tests_passed,tests_failed,build_duration,total_duration\n")
+}
+
+// For demo, generate fake metrics or read from existing stage output
+def buildNumber = System.getenv("BUILD_NUMBER") ?: "local"
+def totalDuration = (Math.random() * 10 + 5).round(3)
+def buildDuration = (Math.random() * 3 + 1).round(3)
+def testPassed = (Math.random() * 10).toInteger()
+def testFailed = (Math.random() * 2).toInteger()
+
+metricsFile.append("${buildNumber},Build,${buildDuration},${testPassed},${testFailed},${buildDuration},${totalDuration}\n")
+
+println "✅ Metrics appended successfully!"
