@@ -58,38 +58,45 @@ pipeline {
         }
     }
 
-    post {
-        always {
-            script {
-                // Helper to safely read files (default 0 if missing)
-                def safeRead = { filename ->
-                    return fileExists(filename) ? readFile(filename).trim() : "0"
-                }
-
-                def install_time = safeRead('install_time.txt')
-                def test_time = safeRead('test_time.txt')
-                def test_result = safeRead('test_result.txt')
-                def build_time = safeRead('build_time.txt')
-                def deploy_time = safeRead('deploy_time.txt')
-                def total_time = (System.currentTimeMillis() - BUILD_START.toLong()) / 1000
-                def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
-
-                def line = "${timestamp},${install_time},${test_time},${test_result},${build_time},${deploy_time},${total_time}\n"
-                if (!fileExists(METRICS_FILE)) {
-                    writeFile file: METRICS_FILE, text: "timestamp,install_time,test_time,test_result,build_time,deploy_time,total_time\n"
-                }
-                writeFile file: 'append_metrics.groovy', text: "new File('${METRICS_FILE}').append('${line}')"
-                sh 'groovy append_metrics.groovy'
-
-                archiveArtifacts artifacts: "${METRICS_FILE}", fingerprint: true
+post {
+    always {
+        script {
+            def safeRead = { filename ->
+                return fileExists(filename) ? readFile(filename).trim() : "0"
             }
-        }
 
-        success {
-            echo '✅ Pipeline completed successfully!'
-        }
+            def install_time = safeRead('install_time.txt')
+            def test_time = safeRead('test_time.txt')
+            def test_result = safeRead('test_result.txt')
+            def build_time = safeRead('build_time.txt')
+            def deploy_time = safeRead('deploy_time.txt')
+            def total_time = (System.currentTimeMillis() - BUILD_START.toLong()) / 1000
+            def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
 
-        failure {
+            def line = "${timestamp},${install_time},${test_time},${test_result},${build_time},${deploy_time},${total_time}\n"
+
+            if (!fileExists(METRICS_FILE)) {
+                writeFile file: METRICS_FILE, text: "timestamp,install_time,test_time,test_result,build_time,deploy_time,total_time\n"
+            }
+
+            // ✅ Directly append inside the pipeline itself
+            def metricsFile = new File(METRICS_FILE)
+            metricsFile.append(line)
+            println "✅ Metrics appended to ${METRICS_FILE}"
+
+            archiveArtifacts artifacts: "${METRICS_FILE}", fingerprint: true
+        }
+    }
+
+    success {
+        echo '✅ Pipeline completed successfully!'
+    }
+
+    failure {
+        echo '❌ Pipeline failed (simulated or real)!'
+    }
+}
+
             echo '❌ Pipeline failed (simulated or real)!'
         }
     }
