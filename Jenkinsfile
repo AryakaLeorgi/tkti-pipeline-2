@@ -99,5 +99,3 @@ post {
 
             echo '❌ Pipeline failed (simulated or real)!'
         }
-    }
-}
