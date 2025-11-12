@@ -12,7 +12,7 @@ pipeline {
                 script {
                     def start = System.currentTimeMillis()
                     sh 'python3 -m venv venv'
-                    sh '. venv/bin/activate && pip install -r requirements.txt || true'  // allow simulated failure
+                    sh '. venv/bin/activate && pip install -r requirements.txt || true'
                     def duration = (System.currentTimeMillis() - start) / 1000
                     writeFile file: 'install_time.txt', text: "${duration}"
                 }
@@ -23,8 +23,7 @@ pipeline {
             steps {
                 script {
                     def start = System.currentTimeMillis()
-                    // simulate test success or random failure
-                    def result = (new Random().nextInt(100) < 85) ? 0 : 1
+                    def result = (new Random().nextInt(100) < 85) ? 0 : 1 // 15% failure chance
                     sh "sleep 2" // simulate test duration
                     def duration = (System.currentTimeMillis() - start) / 1000
                     writeFile file: 'test_time.txt', text: "${duration}"
@@ -62,11 +61,16 @@ pipeline {
     post {
         always {
             script {
-                def install_time = readFile('install_time.txt').trim()
-                def test_time = readFile('test_time.txt').trim()
-                def test_result = readFile('test_result.txt').trim()
-                def build_time = readFile('build_time.txt').trim()
-                def deploy_time = readFile('deploy_time.txt').trim()
+                // Helper to safely read files (default 0 if missing)
+                def safeRead = { filename ->
+                    return fileExists(filename) ? readFile(filename).trim() : "0"
+                }
+
+                def install_time = safeRead('install_time.txt')
+                def test_time = safeRead('test_time.txt')
+                def test_result = safeRead('test_result.txt')
+                def build_time = safeRead('build_time.txt')
+                def deploy_time = safeRead('deploy_time.txt')
                 def total_time = (System.currentTimeMillis() - BUILD_START.toLong()) / 1000
                 def timestamp = new Date().format("yyyy-MM-dd HH:mm:ss")
 
@@ -76,6 +80,7 @@ pipeline {
                 }
                 writeFile file: 'append_metrics.groovy', text: "new File('${METRICS_FILE}').append('${line}')"
                 sh 'groovy append_metrics.groovy'
+
                 archiveArtifacts artifacts: "${METRICS_FILE}", fingerprint: true
             }
         }
@@ -85,7 +90,7 @@ pipeline {
         }
 
         failure {
-            echo '❌ Pipeline failed!'
+            echo '❌ Pipeline failed (simulated or real)!'
         }
     }
 }
