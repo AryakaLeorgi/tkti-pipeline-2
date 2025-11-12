@@ -1,19 +1,18 @@
 // append_metrics.groovy
-// This script appends the latest pipeline metrics into a CSV file for analysis.
+import java.nio.file.*
 
-def metricsFile = new File("pipeline_metrics.csv")
+// Define the metrics file path
+def metricsFile = new File("metrics.csv")
 
+// Example data (you can modify or generate these dynamically)
+def newMetrics = "544,2.334,0,3.517,2.142,12.898"
+
+// If the file doesn't exist, create it and add headers
 if (!metricsFile.exists()) {
-    metricsFile.write("build_number,stage,stage_duration,tests_passed,tests_failed,build_duration,total_duration\n")
+    metricsFile.write("build_id,test_time,failures,build_time,deploy_time,total_time\n")
 }
 
-// For demo, generate fake metrics or read from existing stage output
-def buildNumber = System.getenv("BUILD_NUMBER") ?: "local"
-def totalDuration = (Math.random() * 10 + 5).round(3)
-def buildDuration = (Math.random() * 3 + 1).round(3)
-def testPassed = (Math.random() * 10).toInteger()
-def testFailed = (Math.random() * 2).toInteger()
-
-metricsFile.append("${buildNumber},Build,${buildDuration},${testPassed},${testFailed},${buildDuration},${totalDuration}\n")
+// Append new metrics to the CSV
+metricsFile.append(newMetrics + "\n")
 
 println "✅ Metrics appended successfully!"
