@@ -1,45 +1,36 @@
-# predict_pipeline.py
-import argparse
 import joblib
 import pandas as pd
-import sys
+import argparse
 
-# --- Parse CLI arguments ---
+# --- Parse CLI arguments from Jenkins ---
 parser = argparse.ArgumentParser()
 parser.add_argument("--buildTime", type=float, required=True)
 parser.add_argument("--testTime", type=float, required=True)
 parser.add_argument("--deployTime", type=float, required=True)
-parser.add_argument("--failureReason", type=str, default="None")
+parser.add_argument("--failureReason", type=str, required=True)
 args = parser.parse_args()
 
-# --- Load trained model ---
-model = joblib.load("pipeline_success_model.pkl")
+# --- Load model + column metadata ---
+model = joblib.load("pipeline_success_model3.pkl")
+model_columns = joblib.load("model_columns.pkl")
 
-# --- Prepare input ---
-failure_reason_options = [
-    "None", "UnitTestError", "IntegrationFail", "Timeout", "BuildScriptError"
-]
+# --- Build input ---
+df = pd.DataFrame([{
+    "BuildTime": args.buildTime,
+    "TestTime": args.testTime,
+    "DeployTime": args.deployTime,
+    "FailureReason": args.failureReason
+}])
 
-# One-hot encode the failure reason
-data = {f"FailureReason_{reason}": 0 for reason in failure_reason_options[1:]}  # skip 'None'
-if args.failureReason in data:
-    data[f"FailureReason_{args.failureReason}"] = 1
+# One-hot encode and align with training columns
+df = pd.get_dummies(df, columns=["FailureReason"], drop_first=True)
 
-# Add numerical features
-data["BuildTime"] = args.buildTime
-data["TestTime"] = args.testTime
-data["DeployTime"] = args.deployTime
+for col in model_columns:
+    if col not in df.columns:
+        df[col] = 0  # fill missing columns
 
-# --- Make prediction ---
-df = pd.DataFrame([data])
+df = df[model_columns]  # ensure same order
+
+# --- Predict ---
 pred = model.predict(df)[0]
-prob = model.predict_proba(df)[0][1]
-
-# --- Output ---
-if pred == 1:
-    print(f"✅ Prediction: SUCCESS ({prob*100:.2f}% confidence)")
-else:
-    print(f"❌ Prediction: FAILURE ({prob*100:.2f}% confidence)")
-
-# Exit code 0 (success) or 1 (predicted fail)
-sys.exit(0 if pred == 1 else 1)
+print(f"✅ Prediction result: {pred}")
