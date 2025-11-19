@@ -1,22 +1,20 @@
+import sys
 import pandas as pd
-from sklearn.ensemble import IsolationForest
+import joblib
 
-DATA = "data/real_pipeline_metrics.csv"
+model = joblib.load("models/pipeline_model.pkl")
 
-def main():
-    df = pd.read_csv(DATA)
+build = float(sys.argv[1])
+test = float(sys.argv[2])
+deploy = float(sys.argv[3])
 
-    model = IsolationForest(contamination=0.05)
-    model.fit(df[["build_time","test_time","deploy_time"]])
+X = pd.DataFrame([[build, test, deploy]], 
+    columns=["build_time", "test_time", "deploy_time"])
 
-    df["anomaly"] = model.predict(df[["build_time","test_time","deploy_time"]])
+prob = model.predict_proba(X)[0][1]
 
-    risk = df["anomaly"].iloc[-1] == -1
+print(f"Failure risk: {prob}")
 
-    if risk:
-        print("⚠ WARNING: anomaly detected in latest pipeline run")
-    else:
-        print("✓ No anomaly detected")
-
-if __name__ == "__main__":
-    main()
+if prob > 0.7:
+    print("ANOMALY DETECTED: High failure probability!")
+    sys.exit(1)

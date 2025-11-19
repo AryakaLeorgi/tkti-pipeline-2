@@ -1,24 +1,23 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
 import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
 
-df = pd.read_csv("pipeline_metrics.csv")
+CSV = "pipeline_metrics.csv"
 
-df["FailureReason"] = df["FailureReason"].fillna("None")
+df = pd.read_csv(CSV)
 
-X = df[["BuildTime", "TestTime", "DeployTime"]]
-y = df["Success"]
+# features
+X = df[["build_time", "test_time", "deploy_time"]]
+y = df["failed"]
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+model = Pipeline([
+    ("scaler", StandardScaler()),
+    ("clf", RandomForestClassifier(n_estimators=200))
+])
 
-model = RandomForestClassifier()
-model.fit(X_train, y_train)
+model.fit(X, y)
+joblib.dump(model, "models/pipeline_model.pkl")
 
-y_pred = model.predict(X_test)
-
-print(classification_report(y_test, y_pred))
-
-joblib.dump(model, "ml/model.pkl")
-print("✅ Model saved as ml/model.pkl")
+print("Model retrained and saved.")
