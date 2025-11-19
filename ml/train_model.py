@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 import joblib
 import os
 
-csv_path = "ml/pipeline_metrics.csv"
+csv_path = "data/pipeline_metrics.csv"
 
 print("Loading CSV from:", os.path.abspath(csv_path))
 
