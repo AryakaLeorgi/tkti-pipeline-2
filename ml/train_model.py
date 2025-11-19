@@ -1,33 +1,62 @@
+import os
 import pandas as pd
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 import joblib
-import os
 
-csv_path = "data/pipeline_metrics.csv"
+CSV_PATH = "data/pipeline_metrics.csv"
+MODEL_PATH = "ml/model.pkl"
 
-print("Loading CSV from:", os.path.abspath(csv_path))
+def ensure_csv_exists():
+    """Ensure CSV file and folder exist, otherwise create them."""
+    folder = os.path.dirname(CSV_PATH)
+    os.makedirs(folder, exist_ok=True)
 
-# FIX BOM + trim whitespace
-df = pd.read_csv(csv_path, encoding="utf-8-sig")
-df.columns = df.columns.str.strip()
+    if not os.path.exists(CSV_PATH):
+        print("[INFO] CSV not found, creating new:", CSV_PATH)
+        with open(CSV_PATH, "w") as f:
+            f.write("timestamp,build_time,test_time,deploy_time,result\n")
+        return False  # CSV empty → don't train
+    return True
 
-print("Columns in CSV:", df.columns)
 
-# Create label
-if "result" not in df.columns:
-    raise ValueError("ERROR: CSV missing 'result' column. Columns found: " + str(df.columns))
+def load_dataset():
+    """Load dataset safely; if file empty, skip training."""
+    df = pd.read_csv(CSV_PATH)
 
-df["Success"] = df["result"].apply(lambda x: 1 if x == "SUCCESS" else 0)
+    if df.empty or len(df) < 5:
+        print("[WARNING] Not enough data to train model (need at least 5 rows).")
+        return None
 
-X = df[["build_time", "test_time", "deploy_time"]]
-y = df["Success"]
+    # Convert SUCCESS/FAILED → 1/0
+    df["Success"] = df["result"].apply(lambda x: 1 if str(x).strip() == "SUCCESS" else 0)
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X = df[["build_time", "test_time", "deploy_time"]]
+    y = df["Success"]
 
-model = RandomForestClassifier(n_estimators=100, random_state=42)
-model.fit(X_train, y_train)
+    return X, y
 
-joblib.dump(model, "ml/model.pkl")
 
-print("Model trained and saved.")
+def train():
+    print("[INFO] Checking CSV...")
+
+    if not ensure_csv_exists():
+        print("[INFO] CSV created but empty → skipping training.")
+        return
+
+    dataset = load_dataset()
+    if dataset is None:
+        print("[INFO] No training performed due to insufficient data.")
+        return
+
+    X, y = dataset
+
+    print("[INFO] Training RandomForest model...")
+    model = RandomForestClassifier(n_estimators=200, random_state=42)
+    model.fit(X, y)
+
+    joblib.dump(model, MODEL_PATH)
+    print("[INFO] Model trained & saved to:", MODEL_PATH)
+
+
+if __name__ == "__main__":
+    train()
