@@ -4,7 +4,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 import joblib
 
-df = pd.read_csv("pipeline_results.csv")
+df = pd.read_csv("pipeline_metrics.csv")
+
 
 # Drop kolom reason untuk training (hanya training binary success)
 df["FailureReason"] = df["FailureReason"].fillna("None")
