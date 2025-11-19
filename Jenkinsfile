@@ -1,27 +1,28 @@
 pipeline {
     agent any
 
+    environment {
+        PYENV = ".venv"
+    }
+
     stages {
+
         stage('Setup Python Env') {
             steps {
-                sh '''
-                python3 -m venv .venv
-                . .venv/bin/activate
-                pip install --break-system-packages -r requirements.txt
-                '''
+                sh """
+                    python3 -m venv ${PYENV}
+                    . ${PYENV}/bin/activate
+                    pip install --break-system-packages -r requirements.txt
+                """
             }
         }
 
         stage('Build') {
             steps {
                 script {
-                    def result = measureTime {
-                        sh '''
-                        echo "Running build..."
-                        python3 ml/failure_simulation.py build
-                        '''
-                    }
-                    build_time = result
+                    echo "Running build..."
+                    sh "python3 ml/failure_simulation.py build > build.log"
+                    build_time = sh(script: "grep 'DURATION:' build.log | awk '{print \$2}'", returnStdout: true).trim()
                 }
             }
         }
@@ -29,13 +30,9 @@ pipeline {
         stage('Test') {
             steps {
                 script {
-                    def result = measureTime {
-                        sh '''
-                        echo "Running tests..."
-                        python3 ml/failure_simulation.py test
-                        '''
-                    }
-                    test_time = result
+                    echo "Running tests..."
+                    sh "python3 ml/failure_simulation.py test > test.log"
+                    test_time = sh(script: "grep 'DURATION:' test.log | awk '{print \$2}'", returnStdout: true).trim()
                 }
             }
         }
@@ -43,13 +40,9 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    def result = measureTime {
-                        sh '''
-                        echo "Deploying..."
-                        python3 ml/failure_simulation.py deploy
-                        '''
-                    }
-                    deploy_time = result
+                    echo "Deploying..."
+                    sh "python3 ml/failure_simulation.py deploy > deploy.log"
+                    deploy_time = sh(script: "grep 'DURATION:' deploy.log | awk '{print \$2}'", returnStdout: true).trim()
                 }
             }
         }
@@ -57,17 +50,52 @@ pipeline {
         stage('Log Real Metrics') {
             steps {
                 sh """
-                . .venv/bin/activate
-                python3 ml/log_real_metrics.py --build ${build_time} --test ${test_time} --deploy ${deploy_time}
+                    . ${PYENV}/bin/activate
+                    python3 ml/log_real_metrics.py \
+                        --build ${build_time} \
+                        --test ${test_time} \
+                        --deploy ${deploy_time}
+                """
+            }
+        }
+
+        stage('Train ML Model') {
+            steps {
+                sh """
+                    . ${PYENV}/bin/activate
+                    python3 ml/train_model.py
+                """
+            }
+        }
+
+        stage('Predict Optimal Durations') {
+            steps {
+                sh """
+                    . ${PYENV}/bin/activate
+                    python3 ml/predict.py
+                """
+            }
+        }
+
+        stage('Anomaly Detection') {
+            steps {
+                sh """
+                    . ${PYENV}/bin/activate
+                    python3 ml/anomaly_detection.py \
+                        --build ${build_time} \
+                        --test ${test_time} \
+                        --deploy ${deploy_time}
                 """
             }
         }
     }
-}
 
-def measureTime(Closure body) {
-    def start = System.currentTimeMillis()
-    body()
-    def end = System.currentTimeMillis()
-    return ((end - start) / 1000.0)
+    post {
+        success {
+            echo "Pipeline + ML feedback completed successfully!"
+        }
+        failure {
+            echo "Pipeline failed."
+        }
+    }
 }
