@@ -1,84 +1,84 @@
 pipeline {
     agent any
 
-    environment {
-        METRICS_FILE = "pipeline_metrics.csv"
-        MODEL_FILE = "ci_cd_model.pkl"
-        RECOMMEND_FILE = "ml/decision.json"
-    }
-
     stages {
 
-        stage('Simulate CI/CD Runs') {
+        stage('Checkout') {
             steps {
-                echo "🚀 Starting 1000 simulated CI/CD runs..."
-                script {
-                    writeFile file: METRICS_FILE, text: libraryResource('simulation/pipeline_metrics.csv')
-                }
-                echo "✅ Generated 1000 simulation records."
+                checkout scm
             }
         }
 
-        stage('ML Training') {
+        stage('Install Dependencies') {
             steps {
-                echo "📚 Training ML model..."
-                sh "python3 ml/train_model.py"
+                sh """
+                    pip install -r requirements.txt
+                """
             }
         }
 
-        stage('ML Optimization') {
+        stage('Run Simulation Build') {
             steps {
-                echo "🤖 Running ML optimizer..."
-                sh "python3 ml/optimize_pipeline.py"
+                sh """
+                    python simulation/run_simulation.py --output pipeline_metrics.csv
+                """
             }
-        }
-
-        stage('Adaptive Build (ML Feedback Loop)') {
-            steps {
-                script {
-                    def decision = readJSON file: RECOMMEND_FILE
-
-                    echo "🔍 ML Decision: ${decision}"
-
-                    if (decision.enable_cache == true) {
-                        echo "⚡ Using build cache (recommended by ML)"
-                        sh "echo 'Running build with cache...'"
-                        sh "sleep 1"
-                    } else {
-                        echo "❌ Cache disabled"
-                    }
-
-                    if (decision.skip_tests == true) {
-                        echo "⚡ ML recommends skipping long tests"
-                    } else {
-                        echo "▶ Running test normally"
-                        sh "echo 'Running unit tests...'"
-                        sh "sleep 1"
-                    }
-
-                    if (decision.parallel_build == true) {
-                        echo "⚡ ML recommends parallel build"
-                        sh "echo 'Parallel build simulation...'"
-                        sh "sleep 1"
-                    }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'pipeline_metrics.csv', fingerprint: true
                 }
             }
         }
 
-        stage('Show Optimization Report') {
+        stage('Evaluate Pipeline Metrics with ML') {
             steps {
-                echo "📘 Final ML Decisions:"
-                sh "cat ${RECOMMEND_FILE}"
+                sh """
+                    python ml/evaluate_pipeline.py \
+                        --input pipeline_metrics.csv \
+                        --model ml/model.pkl \
+                        --output ml/evaluation.json
+                """
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'ml/evaluation.json', fingerprint: true
+                }
             }
         }
-    }
 
-    post {
-        always {
-            archiveArtifacts artifacts: '*.csv'
-            archiveArtifacts artifacts: '*.pkl'
-            archiveArtifacts artifacts: 'ml/*.json'
-            echo "📦 Artifacts saved."
+        stage('Decision: Retrain or Not') {
+            steps {
+                script {
+                    def eval = readJSON file: "ml/evaluation.json"
+                    echo "Performance Score: ${eval.performance_score}"
+
+                    if (eval.retrain_needed == true) {
+                        echo "⚠ Model needs retraining!"
+                        env.NEED_RETRAIN = "yes"
+                    } else {
+                        echo "Model still good — skipping retraining."
+                        env.NEED_RETRAIN = "no"
+                    }
+                }
+            }
+        }
+
+        stage('Retrain Model') {
+            when {
+                environment name: 'NEED_RETRAIN', value: 'yes'
+            }
+            steps {
+                sh """
+                    python ml/train_model.py \
+                        --data pipeline_metrics.csv \
+                        --output ml/model.pkl
+                """
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'ml/model.pkl', fingerprint: true
+                }
+            }
         }
     }
 }

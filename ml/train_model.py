@@ -1,24 +1,20 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
-import joblib
+from sklearn.ensemble import RandomForestRegressor
+import pickle
+import sys
 
-df = pd.read_csv("pipeline_metrics.csv")
-df["FailureReason"] = df["FailureReason"].fillna("None")
+input_csv = sys.argv[sys.argv.index("--data") + 1]
+save_path = sys.argv[sys.argv.index("--output") + 1]
 
-X = df[["BuildTime", "TestTime", "DeployTime"]]
-y = df["Success"]
+df = pd.read_csv(input_csv)
 
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+X = df[["commit_size", "tests_failed"]]
+y = df["build_time"]
 
-model = RandomForestClassifier()
-model.fit(X_train, y_train)
-y_pred = model.predict(X_test)
+model = RandomForestRegressor()
+model.fit(X, y)
 
-print(classification_report(y_test, y_pred))
+with open(save_path, "wb") as f:
+    pickle.dump(model, f)
 
-joblib.dump(model, "ci_cd_model.pkl")
-print("✅ Model saved.")
+print("New model saved:", save_path)
