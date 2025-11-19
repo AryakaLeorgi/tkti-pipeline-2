@@ -14,3 +14,8 @@ if df["TestTime"].iloc[0] > 3:
     print("⚠ Test terlalu lama → Gunakan parallel testing.")
 if df["DeployTime"].iloc[0] > 2:
     print("⚠ Deploy terlalu lama → Gunakan lightweight artifact.")
+
+with open("optimization_report.txt", "w") as f:
+    f.write("Pipeline Optimization Report\n")
+    f.write("=================================\n")
+    f.write("Rekomendasi: Kurangi waktu build\n")
