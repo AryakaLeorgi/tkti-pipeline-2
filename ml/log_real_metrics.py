@@ -1,30 +1,31 @@
-import os
 import csv
+import os
 from datetime import datetime
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--build", type=float, required=True)
+parser.add_argument("--test", type=float, required=True)
+parser.add_argument("--deploy", type=float, required=True)
+args = parser.parse_args()
 
 OUT_PATH = "data/real_pipeline_metrics.csv"
 
-def read_env_var(name, default="0"):
-    return float(os.getenv(name, default))
+os.makedirs("data", exist_ok=True)
 
-def main():
-    metrics = {
-        "timestamp": datetime.utcnow().isoformat(),
-        "build_time": read_env_var("BUILD_TIME"),
-        "test_time": read_env_var("TEST_TIME"),
-        "deploy_time": read_env_var("DEPLOY_TIME"),
-        "result": os.getenv("PIPELINE_RESULT", "UNKNOWN"),
-    }
+file_exists = os.path.isfile(OUT_PATH)
 
-    write_header = not os.path.exists(OUT_PATH)
+with open(OUT_PATH, "a", newline="") as f:
+    writer = csv.writer(f)
 
-    with open(OUT_PATH, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=metrics.keys())
-        if write_header:
-            writer.writeheader()
-        writer.writerow(metrics)
+    if not file_exists:
+        writer.writerow(["Timestamp", "BuildTime", "TestTime", "DeployTime"])
 
-    print("Saved real CI/CD metrics:", metrics)
+    writer.writerow([
+        datetime.utcnow().isoformat(),
+        args.build,
+        args.test,
+        args.deploy
+    ])
 
-if __name__ == "__main__":
-    main()
+print("Logged real pipeline metrics successfully.")
