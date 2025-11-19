@@ -1,34 +1,33 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
 import joblib
+import os
 
-# Load dataset
-df = pd.read_csv("pipeline_metrics.csv")
+csv_path = "ml/pipeline_metrics.csv"
 
-# Konversi SUCCESS/FAIL → 1/0
+print("Loading CSV from:", os.path.abspath(csv_path))
+
+# FIX BOM + trim whitespace
+df = pd.read_csv(csv_path, encoding="utf-8-sig")
+df.columns = df.columns.str.strip()
+
+print("Columns in CSV:", df.columns)
+
+# Create label
+if "result" not in df.columns:
+    raise ValueError("ERROR: CSV missing 'result' column. Columns found: " + str(df.columns))
+
 df["Success"] = df["result"].apply(lambda x: 1 if x == "SUCCESS" else 0)
 
-# Fitur
 X = df[["build_time", "test_time", "deploy_time"]]
 y = df["Success"]
 
-# Train-test split
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-model = RandomForestClassifier()
+model = RandomForestClassifier(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
 
-# Prediksi
-y_pred = model.predict(X_test)
+joblib.dump(model, "ml/model.pkl")
 
-# Print evaluasi
-print("=== Classification Report ===")
-print(classification_report(y_test, y_pred))
-
-# Save model ke file
-joblib.dump(model, "ci_cd_model.pkl")
-print("Model saved as ci_cd_model.pkl")
+print("Model trained and saved.")
