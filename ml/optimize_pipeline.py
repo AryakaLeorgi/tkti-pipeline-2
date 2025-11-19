@@ -1,7 +1,7 @@
 import pandas as pd
 import joblib
 
-df = pd.read_csv('pipeline_results.csv').tail(1)
+df = pd.read_csv('pipeline_metrics.csv').tail(1)
 model = joblib.load('ci_cd_model.pkl')
 
 prediction = model.predict(df[['BuildTime', 'TestTime', 'DeployTime']])
