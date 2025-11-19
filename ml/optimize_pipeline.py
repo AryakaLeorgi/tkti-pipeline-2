@@ -1,36 +1,22 @@
-import joblib
 import pandas as pd
-import json
 
-model = joblib.load("ci_cd_model.pkl")
+df = pd.read_csv("pipeline_metrics.csv").tail(1).iloc[0]
 
-# contoh input pipeline REAL TIME  
-new_run = pd.DataFrame([{
-    "BuildTime": 120,
-    "TestTime": 60,
-    "DeployTime": 20
-}])
+build = df["BuildTime"]
+test = df["TestTime"]
 
-pred = model.predict(new_run)[0]
+recommendation = ""
 
-decision = {
-    "predicted_success": int(pred),
-    "enable_cache": False,
-    "skip_tests": False,
-    "parallel_build": False
-}
+if build > 200:
+    recommendation = "Kurangi waktu build (gunakan caching)"
+elif test > 150:
+    recommendation = "Kurangi waktu testing"
+else:
+    recommendation = "Pipeline sudah optimal"
 
-# RULE SIMPLE: ML-driven pipeline
-if new_run["BuildTime"][0] > 100:
-    decision["enable_cache"] = True
+with open("optimization_report.txt", "w") as f:
+    f.write("Pipeline Optimization Report\n")
+    f.write("=================================\n")
+    f.write("Rekomendasi: " + recommendation)
 
-if new_run["TestTime"][0] > 80:
-    decision["skip_tests"] = True
-
-if new_run["BuildTime"][0] > 150:
-    decision["parallel_build"] = True
-
-with open("ml/decision.json", "w") as f:
-    json.dump(decision, f, indent=4)
-
-print("Generated ML decision:", decision)
+print("⚠ " + recommendation)

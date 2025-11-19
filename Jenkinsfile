@@ -3,15 +3,13 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+        stage('Setup Environment') {
             steps {
-                checkout scm
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
+                echo "🔧 Creating virtual environment..."
                 sh """
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    pip install --upgrade pip
                     pip install -r requirements.txt
                 """
             }
@@ -19,66 +17,72 @@ pipeline {
 
         stage('Run Simulation Build') {
             steps {
+                echo "🚀 Running CI/CD simulation..."
                 sh """
+                    . venv/bin/activate
                     python simulation/run_simulation.py --output pipeline_metrics.csv
                 """
-            }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'pipeline_metrics.csv', fingerprint: true
-                }
+                echo "✅ Simulation complete."
             }
         }
 
-        stage('Evaluate Pipeline Metrics with ML') {
+        stage('Train ML Model') {
             steps {
+                echo "📚 Training Machine Learning model..."
                 sh """
-                    python ml/evaluate_pipeline.py \
-                        --input pipeline_metrics.csv \
-                        --model ml/model.pkl \
-                        --output ml/evaluation.json
+                    . venv/bin/activate
+                    python ml/train_model.py
                 """
             }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'ml/evaluation.json', fingerprint: true
-                }
+        }
+
+        stage('Evaluate with ML') {
+            steps {
+                echo "🤖 Evaluating pipeline with ML..."
+                sh """
+                    . venv/bin/activate
+                    python ml/evaluate_pipeline.py
+                """
             }
         }
 
-        stage('Decision: Retrain or Not') {
+        stage('ML Feedback Loop') {
             steps {
+                echo "🔁 Running ML feedback loop optimizer..."
+                sh """
+                    . venv/bin/activate
+                    python ml/optimize_pipeline.py
+                """
+            }
+        }
+
+        stage('Show Optimization Report') {
+            steps {
+                echo "📘 Optimization Summary:"
                 script {
-                    def eval = readJSON file: "ml/evaluation.json"
-                    echo "Performance Score: ${eval.performance_score}"
-
-                    if (eval.retrain_needed == true) {
-                        echo "⚠ Model needs retraining!"
-                        env.NEED_RETRAIN = "yes"
-                    } else {
-                        echo "Model still good — skipping retraining."
-                        env.NEED_RETRAIN = "no"
-                    }
+                    def report = readFile "optimization_report.txt"
+                    echo report
                 }
             }
         }
 
-        stage('Retrain Model') {
-            when {
-                environment name: 'NEED_RETRAIN', value: 'yes'
-            }
+        stage('Archive Artifacts') {
             steps {
-                sh """
-                    python ml/train_model.py \
-                        --data pipeline_metrics.csv \
-                        --output ml/model.pkl
-                """
+                archiveArtifacts artifacts: 'pipeline_metrics.csv'
+                archiveArtifacts artifacts: 'ml/model.pkl'
+                archiveArtifacts artifacts: 'optimization_report.txt'
+                echo "📦 Artifacts saved."
             }
-            post {
-                success {
-                    archiveArtifacts artifacts: 'ml/model.pkl', fingerprint: true
-                }
-            }
+        }
+
+    }
+
+    post {
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        failure {
+            echo "❌ Pipeline failed!"
         }
     }
 }
