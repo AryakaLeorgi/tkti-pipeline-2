@@ -2,80 +2,82 @@ pipeline {
     agent any
 
     environment {
-        METRICS_FILE = 'pipeline_metrics.csv'
-        RUN_COUNT = '1000'
-        PYTHON = 'python3'
+        METRICS_FILE = "pipeline_metrics.csv"
+        MODEL_FILE = "ci_cd_model.pkl"
+        RECOMMEND_FILE = "ml/decision.json"
     }
 
     stages {
 
         stage('Simulate CI/CD Runs') {
             steps {
+                echo "🚀 Starting 1000 simulated CI/CD runs..."
                 script {
-                    def totalRuns = env.RUN_COUNT.toInteger()
-                    def random = new Random()
-
-                    echo "🚀 Starting ${totalRuns} simulated CI/CD runs..."
-                    def csvData = "RunID,BuildTime,TestTime,DeployTime,Success,FailureReason\n"
-
-                    for (int i = 1; i <= totalRuns; i++) {
-
-                        def buildTime = (random.nextDouble() * 5 + 1).round(3)
-                        def testTime = (random.nextDouble() * 4 + 0.5).round(3)
-                        def deployTime = (random.nextDouble() * 3 + 0.2).round(3)
-
-                        def success = random.nextDouble() > 0.2
-                        def failureReason = success ? "" : (
-                            ["UnitTestError", "IntegrationFail", "Timeout", "BuildScriptError"]
-                            [random.nextInt(4)]
-                        )
-
-                        csvData += "${i},${buildTime},${testTime},${deployTime},${success ? 1 : 0},${failureReason}\n"
-                    }
-
-                    writeFile file: env.METRICS_FILE, text: csvData
-                    echo "✅ Generated ${totalRuns} simulation records."
+                    writeFile file: METRICS_FILE, text: libraryResource('simulation/pipeline_metrics.csv')
                 }
+                echo "✅ Generated 1000 simulation records."
             }
         }
 
         stage('ML Training') {
             steps {
-                script {
-                    echo "📚 Training ML model using pipeline_metrics.csv ..."
-                    sh """
-                        ${env.PYTHON} ml/train_model.py
-                    """
-                }
+                echo "📚 Training ML model..."
+                sh "python3 ml/train_model.py"
             }
         }
 
-        stage('Optimize Pipeline') {
+        stage('ML Optimization') {
+            steps {
+                echo "🤖 Running ML optimizer..."
+                sh "python3 ml/optimize_pipeline.py"
+            }
+        }
+
+        stage('Adaptive Build (ML Feedback Loop)') {
             steps {
                 script {
-                    echo "🤖 Running ML optimizer..."
-                    sh """
-                        ${env.PYTHON} ml/optimize_pipeline.py
-                    """
+                    def decision = readJSON file: RECOMMEND_FILE
+
+                    echo "🔍 ML Decision: ${decision}"
+
+                    if (decision.enable_cache == true) {
+                        echo "⚡ Using build cache (recommended by ML)"
+                        sh "echo 'Running build with cache...'"
+                        sh "sleep 1"
+                    } else {
+                        echo "❌ Cache disabled"
+                    }
+
+                    if (decision.skip_tests == true) {
+                        echo "⚡ ML recommends skipping long tests"
+                    } else {
+                        echo "▶ Running test normally"
+                        sh "echo 'Running unit tests...'"
+                        sh "sleep 1"
+                    }
+
+                    if (decision.parallel_build == true) {
+                        echo "⚡ ML recommends parallel build"
+                        sh "echo 'Parallel build simulation...'"
+                        sh "sleep 1"
+                    }
                 }
             }
         }
 
         stage('Show Optimization Report') {
             steps {
-                script {
-                    echo "📘 Optimization Summary:"
-                    echo readFile("optimization_report.txt")
-                }
+                echo "📘 Final ML Decisions:"
+                sh "cat ${RECOMMEND_FILE}"
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: 'pipeline_metrics.csv', fingerprint: true
-            archiveArtifacts artifacts: 'optimization_report.txt'
-            archiveArtifacts artifacts: 'ci_cd_model.pkl'
+            archiveArtifacts artifacts: '*.csv'
+            archiveArtifacts artifacts: '*.pkl'
+            archiveArtifacts artifacts: 'ml/*.json'
             echo "📦 Artifacts saved."
         }
     }
