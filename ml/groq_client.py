@@ -1,25 +1,28 @@
 import requests
 import os
-import json
 
-def groq_chat(prompt):
-    api_key = os.environ.get("GROQ_API_KEY")
-    url = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
+def groq_chat(prompt: str, model="llama3-8b-8192"):
     headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
     }
 
-    data = {
-        "model": "deepseek-r1",   # GRATIS di Groq
+    body = {
+        "model": model,
         "messages": [
             {"role": "user", "content": prompt}
         ],
-        "temperature": 0.2
+        "temperature": 0.3
     }
 
-    response = requests.post(url, headers=headers, data=json.dumps(data))
-    response.raise_for_status()
-    
-    return response.json()["choices"][0]["message"]["content"]
+    response = requests.post(GROQ_API_URL, json=body, headers=headers)
+
+    if response.status_code != 200:
+        print("[ERROR] Groq response:", response.text)
+        response.raise_for_status()
+
+    data = response.json()
+    return data["choices"][0]["message"]["content"]
