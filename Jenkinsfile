@@ -27,7 +27,7 @@ pipeline {
             steps {
                 sh '''
                     . .venv/bin/activate
-                    python3 ml/anomaly_check.py
+                    python3 ml/detect_anomaly.py
                 '''
             }
         }
