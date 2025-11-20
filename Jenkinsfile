@@ -42,6 +42,19 @@ pipeline {
         }
     }
 
+    stage('AI Auto Fix') {
+    when { expression { return currentBuild.result == 'FAILURE' } }
+    steps {
+        sh '''
+        . .venv/bin/activate
+        export GROQ_API_KEY=$GROQ_API_KEY
+        python3 ml/auto_fix_code.py "$PIPELINE_ERROR" > ai_fix.txt
+        '''
+        echo readFile('ai_fix.txt')
+    }
+}
+
+
     post {
         always {
             echo "Pipeline finished."
