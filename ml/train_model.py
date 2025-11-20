@@ -1,75 +1,66 @@
 import pandas as pd
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, classification_report
 import joblib
 import os
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
 
 CSV_PATH = "data/pipeline_metrics.csv"
 MODEL_PATH = "ml/model.pkl"
 
-def main():
+def load_data():
+    print(f"Loading CSV from: {CSV_PATH}")
 
-    # ==========================
-    # 1. CEK CSV EXIST
-    # ==========================
-    if not os.path.exists(CSV_PATH):
-        print(f"[ERROR] CSV not found: {CSV_PATH}")
-        print("Pastikan file pipeline_metrics.csv sudah ada di folder data/")
-        return
-
-    print("Loading CSV from:", CSV_PATH)
-
-    # ==========================
-    # 2. LOAD DATA
-    # ==========================
     df = pd.read_csv(CSV_PATH)
 
-    # Pastikan kolom sesuai format:
-    # timestamp, build_time, test_time, deploy_time, result
+    # Pastikan kolom ada
     required_cols = ["BuildTime", "TestTime", "DeployTime", "Success", "FailureReason"]
     for col in required_cols:
         if col not in df.columns:
-            print(f"[ERROR] Kolom '{col}' tidak ditemukan di CSV!")
-            return
+            raise ValueError(f"CSV missing column: {col}")
 
-    # Konversi label ke angka
-    df["Success"] = df["result"].apply(lambda x: 1 if x == "SUCCESS" else 0)
+    return df
 
-    X = df[["build_time", "test_time", "deploy_time"]]
-    y = df["Success"]
+def preprocess(df):
+    # Success sudah 1/0 → aman
+    df["Success"] = df["Success"].astype(int)
 
-    # ==========================
-    # 3. SPLIT DATA
-    # ==========================
+    # Encode FailureReason (categorical)
+    df["FailureReason"] = df["FailureReason"].fillna("None")
+    df["FailureReasonEncoded"] = df["FailureReason"].astype("category").cat.codes
+
+    features = df[["BuildTime", "TestTime", "DeployTime", "FailureReasonEncoded"]]
+    labels = df["Success"]
+
+    return features, labels, df
+
+def train(features, labels):
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        features, labels, test_size=0.25, random_state=42
     )
 
-    # ==========================
-    # 4. TRAIN MODEL
-    # ==========================
-    model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=8,
-        random_state=42
-    )
-
+    model = RandomForestClassifier(n_estimators=120, random_state=42)
     model.fit(X_train, y_train)
 
-    # ==========================
-    # 5. EVALUASI
-    # ==========================
-    acc = model.score(X_test, y_test)
-    print(f"Model accuracy: {acc:.4f}")
+    preds = model.predict(X_test)
+    acc = accuracy_score(y_test, preds)
 
-    # ==========================
-    # 6. SIMPAN MODEL
-    # ==========================
-    os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+    print("\n=== MODEL TRAINED ===")
+    print("Accuracy:", acc)
+    print(classification_report(y_test, preds))
+
+    return model
+
+def save_model(model):
     joblib.dump(model, MODEL_PATH)
+    print(f"\nModel saved to {MODEL_PATH}")
 
-    print(f"Model saved to: {MODEL_PATH}")
-
+def main():
+    df = load_data()
+    features, labels, df = preprocess(df)
+    model = train(features, labels)
+    save_model(model)
 
 if __name__ == "__main__":
     main()
