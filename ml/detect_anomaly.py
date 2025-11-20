@@ -1,62 +1,67 @@
-import sys
-import joblib
-import numpy as np
-import os
 import pandas as pd
+import numpy as np
+import sys
 
-MODEL_PATH = "ml/model.pkl"
 CSV_PATH = "data/pipeline_metrics.csv"
 
-# Load model
-if not os.path.exists(MODEL_PATH):
-    print("[ERROR] Model not found:", MODEL_PATH)
-    sys.exit(1)
+def load_training_stats():
+    df = pd.read_csv(CSV_PATH)
 
-model = joblib.load(MODEL_PATH)
+    # Pakai nama kolom baru
+    required_cols = ["BuildTime", "TestTime", "DeployTime"]
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Missing column in CSV: {col}")
 
-# Load training stats for explanation
-df = pd.read_csv(CSV_PATH)
+    means = df[required_cols].mean()
+    stds = df[required_cols].std()
 
-train_means = df[["build_time", "test_time", "deploy_time"]].mean()
-train_stds = df[["build_time", "test_time", "deploy_time"]].std()
+    return means, stds
 
-# Input values
-build, test, deploy = map(float, sys.argv[1:4])
-X = np.array([[build, test, deploy]])
+def detect_anomaly(build, test, deploy, means, stds):
+    z_build = abs((build - means["BuildTime"]) / stds["BuildTime"])
+    z_test = abs((test - means["TestTime"]) / stds["TestTime"])
+    z_deploy = abs((deploy - means["DeployTime"]) / stds["DeployTime"])
 
-prob = model.predict_proba(X)[0][1]
+    detail = []
+    is_anomaly = False
 
-print(f"Prediction success probability: {prob:.4f}")
+    if z_build > 2:
+        is_anomaly = True
+        detail.append(f"BuildTime too high (z={z_build:.2f})")
 
-is_anomaly = prob < 0.5
+    if z_test > 2:
+        is_anomaly = True
+        detail.append(f"TestTime too high (z={z_test:.2f})")
 
-# ---- Explanation Part ----
-def z_score(val, mean, std):
-    if std == 0:
-        return 0
-    return (val - mean) / std
+    if z_deploy > 2:
+        is_anomaly = True
+        detail.append(f"DeployTime too high (z={z_deploy:.2f})")
 
-z_build = z_score(build, train_means["build_time"], train_stds["build_time"])
-z_test = z_score(test, train_means["test_time"], train_stds["test_time"])
-z_deploy = z_score(deploy, train_means["deploy_time"], train_stds["deploy_time"])
+    return is_anomaly, detail
 
-# Collect explanations
-explanations = []
+def main():
+    if len(sys.argv) != 4:
+        print("Usage: python3 detect_anomaly.py <BuildTime> <TestTime> <DeployTime>")
+        sys.exit(1)
 
-if abs(z_build) > 2:
-    explanations.append(f"Build time {build:.3f}s abnormal (z={z_build:.2f}).")
+    build = float(sys.argv[1])
+    test = float(sys.argv[2])
+    deploy = float(sys.argv[3])
 
-if abs(z_test) > 2:
-    explanations.append(f"Test time {test:.3f}s abnormal (z={z_test:.2f}).")
+    means, stds = load_training_stats()
+    is_anomaly, reasons = detect_anomaly(build, test, deploy, means, stds)
 
-if abs(z_deploy) > 2:
-    explanations.append(f"Deploy time {deploy:.3f}s abnormal (z={z_deploy:.2f}).")
+    print("\n=== ANOMALY DETECTION RESULT ===")
+    print(f"Build: {build}, Test: {test}, Deploy: {deploy}")
 
-# Output
-if is_anomaly:
-    print("ANOMALY")
-    print("Reason:")
-    for e in explanations:
-        print(" -", e)
-else:
-    print("NORMAL")
+    if is_anomaly:
+        print("Status: ANOMALY DETECTED")
+        print("Reasons:")
+        for r in reasons:
+            print(f" - {r}")
+    else:
+        print("Status: Normal")
+
+if __name__ == "__main__":
+    main()
