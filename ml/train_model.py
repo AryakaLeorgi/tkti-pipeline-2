@@ -26,7 +26,7 @@ def main():
 
     # Pastikan kolom sesuai format:
     # timestamp, build_time, test_time, deploy_time, result
-    required_cols = ["build_time", "test_time", "deploy_time", "result"]
+    required_cols = ["BuildTime", "TestTime", "DeployTime", "Success", "FailureReason"]
     for col in required_cols:
         if col not in df.columns:
             print(f"[ERROR] Kolom '{col}' tidak ditemukan di CSV!")
