@@ -1,43 +1,24 @@
 import sys
 import random
 import time
-from datetime import datetime
+from datetime import datetime, UTC
 
-def simulate_stage(stage):
-    start = time.time()
+if len(sys.argv) < 2:
+    print("Usage: python3 failure_simulation.py <stage>")
+    sys.exit(1)
 
-    # chance of failure
-    fail_chance = {
-        "build": 0.15,
-        "test": 0.20,
-        "deploy": 0.10
-    }.get(stage, 0.10)
+stage = sys.argv[1]
 
-    # simulate real stage time (1–3 seconds)
-    duration = round(random.uniform(1.0, 3.0), 3)
+duration = round(random.uniform(1.0, 3.0), 3)
+failed = random.random() < 0.2  # 20% failure rate
 
-    # simulate work
-    time.sleep(duration)
+print(f"[SIMULATION] Stage: {stage}")
+print(f"Duration: {duration}s")
 
-    # randomly fail
-    failed = random.random() < fail_chance
-
-    # write log file
-    log_file = f"{stage}.log"
-    with open(log_file, "w") as f:
-        f.write(f"STAGE: {stage}\n")
-        f.write(f"DURATION: {duration}\n")
-        f.write(f"FAILED: {failed}\n")
-        f.write(f"TIMESTAMP: {datetime.utcnow().isoformat()}\n")
-
-    print(f"[SIMULATION] Stage: {stage}")
-    print(f"Duration: {duration}s")
-    print("[FAILED]" if failed else "[OK] Stage completed normally")
-
-    # return exit code for Jenkins
-    if failed:
-        sys.exit(1)
-
-if __name__ == "__main__":
-    stage = sys.argv[1]
-    simulate_stage(stage)
+if failed:
+    print("[FAILED]")
+    # Tetap exit 1 agar terdeteksi sebagai gagal
+    sys.exit(1)
+else:
+    print("[SUCCESS]")
+    sys.exit(0)

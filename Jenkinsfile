@@ -23,44 +23,79 @@ pipeline {
             }
         }
 
-stage('Simulate Pipeline Execution') {
-    steps {
-        script {
+        stage('Simulate Pipeline Execution') {
+            steps {
+                script {
 
-            // --- BUILD ---
-            def buildOutput = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
-            echo buildOutput
-            def buildTime = buildOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-            env.BUILD_TIME = buildTime   // <── FIX
+                    // -------------------
+                    // Helper function
+                    // -------------------
+                    def simulateStage = { stageName ->
 
-            // --- TEST ---
-            def testOutput = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
-            echo testOutput
-            def testTime = testOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-            env.TEST_TIME = testTime     // <── FIX
+                        // Jalankan simulation dan tangkap exit code
+                        def status = sh(
+                            script: "python3 ml/failure_simulation.py ${stageName}",
+                            returnStatus: true
+                        )
 
-            // --- DEPLOY ---
-            def deployOutput = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
-            echo deployOutput
-            def deployTime = deployOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-            env.DEPLOY_TIME = deployTime // <── FIX
+                        // Ambil output (harus dipanggil lagi untuk menangkap teks)
+                        def output = sh(
+                            script: "python3 ml/failure_simulation.py ${stageName}",
+                            returnStdout: true
+                        ).trim()
 
-            echo "Extracted -> BUILD=${env.BUILD_TIME}, TEST=${env.TEST_TIME}, DEPLOY=${env.DEPLOY_TIME}"
+                        echo output
+
+                        // Ambil duration
+                        def duration = output.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+
+                        // Kalau gagal → status = 0, sukses = 1
+                        def successFlag = (status == 0 ? 1 : 0)
+
+                        return [duration, successFlag]
+                    }
+
+                    // --------------------
+                    // Simulate Build/Test/Deploy
+                    // --------------------
+                    def b = simulateStage("build")
+                    env.BUILD_TIME    = b[0]
+                    env.BUILD_SUCCESS = b[1]
+
+                    def t = simulateStage("test")
+                    env.TEST_TIME     = t[0]
+                    env.TEST_SUCCESS  = t[1]
+
+                    def d = simulateStage("deploy")
+                    env.DEPLOY_TIME   = d[0]
+                    env.DEPLOY_SUCCESS= d[1]
+
+                    echo """
+                    Extracted Metrics:
+
+                    BUILD:  time=${env.BUILD_TIME},  success=${env.BUILD_SUCCESS}
+                    TEST:   time=${env.TEST_TIME},   success=${env.TEST_SUCCESS}
+                    DEPLOY: time=${env.DEPLOY_TIME}, success=${env.DEPLOY_SUCCESS}
+                    """
+                }
+            }
         }
-    }
-}
-
 
         stage('Run Anomaly Detection') {
             steps {
-                sh '''
+                sh """
                 . .venv/bin/activate
-                python3 ml/detect_anomaly.py $BUILD_TIME $TEST_TIME $DEPLOY_TIME
-                '''
+                python3 ml/detect_anomaly.py \
+                    $BUILD_TIME $TEST_TIME $DEPLOY_TIME \
+                    $BUILD_SUCCESS $TEST_SUCCESS $DEPLOY_SUCCESS
+                """
             }
         }
 
         stage('AI Anomaly Stress Test') {
+            when {
+                expression { true } // always run even if anomaly or failure happened
+            }
             steps {
                 sh '''
                 . .venv/bin/activate
@@ -68,6 +103,7 @@ stage('Simulate Pipeline Execution') {
                 '''
             }
         }
+
     }
 
     post {
