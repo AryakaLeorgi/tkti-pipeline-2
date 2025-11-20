@@ -28,20 +28,6 @@ pipeline {
             }
         }
 
-        stage('Simulate Pipeline Execution') {
-            steps {
-                script {
-                    def stages = ["build", "test", "deploy"]
-
-                    for (s in stages) {
-                        def output = sh(script: "python3 ml/failure_simulation.py ${s}", returnStdout: true)
-                        echo output
-                    }
-
-                    echo "Pipeline Error Summary: NO ERRORS"
-                }
-            }
-        }
 
         stage('Run Anomaly Detection') {
             steps {
