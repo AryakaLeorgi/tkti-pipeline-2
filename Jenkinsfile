@@ -23,30 +23,32 @@ pipeline {
             }
         }
 
-            stage('Simulate Pipeline Execution') {
-                steps {
-                    script {
+stage('Simulate Pipeline Execution') {
+    steps {
+        script {
 
-                        // --- BUILD ---
-                        def buildOutput = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
-                        echo buildOutput
-                        def buildTime = buildOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-                        env.BUILD_TIME = buildTime
+            // --- BUILD ---
+            def buildOutput = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
+            echo buildOutput
+            def buildTime = buildOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+            env.BUILD_TIME = buildTime   // <── FIX
 
-                        // --- TEST ---
-                        def testOutput = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
-                        echo testOutput
-                        def testTime = testOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-                        env.TEST_TIME = testTime
+            // --- TEST ---
+            def testOutput = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
+            echo testOutput
+            def testTime = testOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+            env.TEST_TIME = testTime     // <── FIX
 
-                        // --- DEPLOY ---
-                        def deployOutput = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
-                        echo deployOutput
-                        def deployTime = deployOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
-                        env.DEPLOY_TIME = deployTime
-                    }
-                }
-            }
+            // --- DEPLOY ---
+            def deployOutput = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
+            echo deployOutput
+            def deployTime = deployOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+            env.DEPLOY_TIME = deployTime // <── FIX
+
+            echo "Extracted -> BUILD=${env.BUILD_TIME}, TEST=${env.TEST_TIME}, DEPLOY=${env.DEPLOY_TIME}"
+        }
+    }
+}
 
 
         stage('Run Anomaly Detection') {
