@@ -3,7 +3,7 @@ import os
 import json
 
 def groq_chat(prompt):
-    api_key = os.environ.get("GROQ_API_KEY")
+    api_key = os.environ.get("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")
     url = "https://api.groq.com/openai/v1/chat/completions"
 
     headers = {
