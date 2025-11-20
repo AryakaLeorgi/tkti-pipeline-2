@@ -1,49 +1,43 @@
 import joblib
 import numpy as np
-import sys
-import random
+import warnings
 
-MODEL_PATH = "ml/model.pkl"
+# Matikan warning sklearn
+warnings.filterwarnings("ignore", category=UserWarning)
 
-def load_model():
-    return joblib.load(MODEL_PATH)
+# Load model
+model = joblib.load("ml/model.pkl")
 
-def generate_random_input():
-    return [
-        round(random.uniform(0.5, 5.0), 3),  # BuildTime
-        round(random.uniform(0.5, 5.0), 3),  # TestTime
-        round(random.uniform(0.5, 5.0), 3)   # DeployTime
-    ]
-
-if __name__ == "__main__":
-    model = load_model()
-
-    # Ambil input dari argumen pipeline
-    if len(sys.argv) == 4:
+def get_pipeline_input():
+    """Coba baca input pipeline."""
+    import sys
+    data = sys.argv[1:]  # Argument CLI
+    if len(data) == 3:
         try:
-            bt = float(sys.argv[1])
-            tt = float(sys.argv[2])
-            dt = float(sys.argv[3])
-            features = [bt, tt, dt]
-        except ValueError:
-            print("[ERROR] Input harus berupa angka.")
-            exit(1)
-    else:
-        print("[WARNING] Tidak ada input dari pipeline — menggunakan random data untuk anomaly check.")
-        features = generate_random_input()
+            return [float(x) for x in data]
+        except:
+            return None
+    return None
 
-    print(f"[INFO] Anomaly Input: {features}")
+# Coba ambil input
+features = get_pipeline_input()
 
-    arr = np.array([features])
-    prediction = model.predict(arr)[0]
-    score = model.predict_proba(arr)[0][1]
+if features is None:
+    print("[WARNING] Tidak ada input dari pipeline — menggunakan random data untuk anomaly check.")
+    features = np.random.uniform(1.5, 5.0, size=3).round(3).tolist()
 
-    print("\n=== ANOMALY RESULT ===")
-    print("Prediction:", "ANOMALY" if prediction == 1 else "NORMAL")
-    print(f"Score: {score:.4f}")
+print(f"[INFO] Anomaly Input: {features}")
 
-    # === OUTPUT FLAG FOR JENKINS ===
-    if prediction == 1:
-        print("ANOMALY_FLAG=true")
-    else:
-        print("ANOMALY_FLAG=false")
+# Model expect array shape (1,3)
+X = np.array(features).reshape(1, -1)
+
+# Prediction
+prediction = model.predict(X)[0]
+score = model.predict_proba(X)[0][1]
+
+is_anomaly = prediction == 1
+
+print("\n=== ANOMALY RESULT ===")
+print(f"Prediction: {'ANOMALY' if is_anomaly else 'NORMAL'}")
+print(f"Score: {score:.4f}")
+print(f"ANOMALY_FLAG={str(is_anomaly).lower()}")
