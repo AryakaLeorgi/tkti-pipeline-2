@@ -1,7 +1,7 @@
 import pandas as pd
 import sys
 
-CSV_PATH = "pipeline_metrics.csv"
+CSV_PATH = "data/pipeline_metrics.csv"
 df = pd.read_csv(CSV_PATH)
 
 # ====== 1. Detect candidate numeric columns ======
