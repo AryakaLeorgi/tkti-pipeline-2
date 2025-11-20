@@ -23,7 +23,7 @@ def get_pipeline_input():
 features = get_pipeline_input()
 
 if features is None:
-    print("[WARNING] Tidak ada input dari pipeline — menggunakan random data untuk anomaly check.")
+    print("[WARNING]")
     features = np.random.uniform(1.5, 5.0, size=3).round(3).tolist()
 
 print(f"[INFO] Anomaly Input: {features}")

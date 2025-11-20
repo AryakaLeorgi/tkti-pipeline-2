@@ -1,42 +1,69 @@
 pipeline {
     agent any
 
+    environment {
+        PYTHON = "python3"
+        VENV = ".venv"
+    }
+
     stages {
-        stage('Prepare Python Env') {
-            steps {
-                sh '''
-                    echo "[INFO] Creating virtual environment..."
-                    python3 -m venv .venv
-                    . .venv/bin/activate
 
-                    echo "[INFO] Install dependencies..."
+        stage('Setup Python venv') {
+            steps {
+                sh """
+                    ${env.PYTHON} -m venv ${env.VENV}
+                    . ${env.VENV}/bin/activate
                     pip install --upgrade pip
-                    pip install -r requirements.txt
-
-                    echo "[INFO] Environment ready."
-                '''
+                    pip install pandas scikit-learn joblib requests
+                """
             }
         }
 
-        stage('Train Model') {
+        stage('Train ML Model') {
             steps {
-                sh '''
-                    echo "[INFO] Training model..."
-                    . .venv/bin/activate
+                sh """
+                    . ${env.VENV}/bin/activate
                     python3 ml/train_model.py
-                '''
+                """
             }
         }
 
-        stage('Detect Anomaly') {
+
+        stage('Run Anomaly Detection') {
             steps {
-                sh '''
-                    echo "[INFO] Running anomaly detection..."
-                    . .venv/bin/activate
-                    python3 ml/detect_anomaly.py
-                '''
+                script {
+                    def result = sh(
+                        script: ". ${env.VENV}/bin/activate && python3 ml/detect_anomaly.py",
+                        returnStdout: true
+                    ).trim()
+
+                    echo result
+
+                    if (result.contains("ANOMALY_FLAG=true")) {
+                        env.ANOMALY_DETECTED = "true"
+                    } else {
+                        env.ANOMALY_DETECTED = "false"
+                    }
+                }
             }
         }
+
+        stage('AI Auto Fix (Groq)') {
+            when {
+                expression { env.ANOMALY_DETECTED == "true" }
+            }
+            environment {
+                GROQ_API_KEY = credentials('groq-api-key')
+            }
+            steps {
+                sh """
+                    echo "[INFO] Anomaly detected — running AI auto-fix..."
+                    . ${env.VENV}/bin/activate
+                    python3 ml/auto_fix_groq.py
+                """
+            }
+        }
+
     }
 
     post {
