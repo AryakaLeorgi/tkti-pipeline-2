@@ -23,63 +23,57 @@ pipeline {
             }
         }
 
-        stage('Simulate Pipeline Execution') {
-            steps {
-                script {
+stage('Simulate Pipeline Execution') {
+    steps {
+        script {
 
-                    // -------------------
-                    // Helper function
-                    // -------------------
-                    def simulateStage = { stageName ->
+            def simulateStage = { stageName ->
 
-                        // Jalankan simulation dan tangkap exit code
-                        def status = sh(
-                            script: "python3 ml/failure_simulation.py ${stageName}",
-                            returnStatus: true
-                        )
+                // Jalankan simulation (aman walaupun exit 1)
+                def output = sh(
+                    script: "python3 ml/failure_simulation.py ${stageName}",
+                    returnStdout: true
+                ).trim()
 
-                        // Ambil output (harus dipanggil lagi untuk menangkap teks)
-                        def output = sh(
-                            script: "python3 ml/failure_simulation.py ${stageName}",
-                            returnStdout: true
-                        ).trim()
+                echo output
 
-                        echo output
+                // Ambil exit code di panggilan terpisah
+                def status = sh(
+                    script: "python3 ml/failure_simulation.py ${stageName}",
+                    returnStatus: true
+                )
 
-                        // Ambil duration
-                        def duration = output.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+                // Extract duration dari output pertama
+                def duration = output.find(/Duration: ([0-9.]+)s/) { full, num -> num }
 
-                        // Kalau gagal → status = 0, sukses = 1
-                        def successFlag = (status == 0 ? 1 : 0)
+                // 1 = success, 0 = fail
+                def successFlag = (status == 0 ? 1 : 0)
 
-                        return [duration, successFlag]
-                    }
-
-                    // --------------------
-                    // Simulate Build/Test/Deploy
-                    // --------------------
-                    def b = simulateStage("build")
-                    env.BUILD_TIME    = b[0]
-                    env.BUILD_SUCCESS = b[1]
-
-                    def t = simulateStage("test")
-                    env.TEST_TIME     = t[0]
-                    env.TEST_SUCCESS  = t[1]
-
-                    def d = simulateStage("deploy")
-                    env.DEPLOY_TIME   = d[0]
-                    env.DEPLOY_SUCCESS= d[1]
-
-                    echo """
-                    Extracted Metrics:
-
-                    BUILD:  time=${env.BUILD_TIME},  success=${env.BUILD_SUCCESS}
-                    TEST:   time=${env.TEST_TIME},   success=${env.TEST_SUCCESS}
-                    DEPLOY: time=${env.DEPLOY_TIME}, success=${env.DEPLOY_SUCCESS}
-                    """
-                }
+                return [duration, successFlag]
             }
+
+            def b = simulateStage("build")
+            env.BUILD_TIME = b[0]
+            env.BUILD_SUCCESS = b[1]
+
+            def t = simulateStage("test")
+            env.TEST_TIME = t[0]
+            env.TEST_SUCCESS = t[1]
+
+            def d = simulateStage("deploy")
+            env.DEPLOY_TIME = d[0]
+            env.DEPLOY_SUCCESS = d[1]
+
+            echo """
+Metrics:
+  BUILD:  time=${env.BUILD_TIME}, success=${env.BUILD_SUCCESS}
+  TEST:   time=${env.TEST_TIME},  success=${env.TEST_SUCCESS}
+  DEPLOY: time=${env.DEPLOY_TIME}, success=${env.DEPLOY_SUCCESS}
+"""
         }
+    }
+}
+
 
         stage('Run Anomaly Detection') {
             steps {
