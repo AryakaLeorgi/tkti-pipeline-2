@@ -23,24 +23,31 @@ pipeline {
             }
         }
 
-        stage('Simulate Pipeline Execution') {
-            steps {
-                script {
-                    def buildTime = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
-                    echo "Build simulation: ${buildTime}"
+            stage('Simulate Pipeline Execution') {
+                steps {
+                    script {
 
-                    def testTime = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
-                    echo "Test simulation: ${testTime}"
+                        // --- BUILD ---
+                        def buildOutput = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
+                        echo buildOutput
+                        def buildTime = buildOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+                        env.BUILD_TIME = buildTime
 
-                    def deployTime = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
-                    echo "Deploy simulation: ${deployTime}"
+                        // --- TEST ---
+                        def testOutput = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
+                        echo testOutput
+                        def testTime = testOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+                        env.TEST_TIME = testTime
 
-                    env.BUILD_TIME = buildTime
-                    env.TEST_TIME = testTime
-                    env.DEPLOY_TIME = deployTime
+                        // --- DEPLOY ---
+                        def deployOutput = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
+                        echo deployOutput
+                        def deployTime = deployOutput.find(/Duration: ([0-9.]+)s/) { full, num -> num }
+                        env.DEPLOY_TIME = deployTime
+                    }
                 }
             }
-        }
+
 
         stage('Run Anomaly Detection') {
             steps {
