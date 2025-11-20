@@ -3,80 +3,67 @@ pipeline {
 
     stages {
 
-        stage('Setup Python Env') {
+        stage('Setup Python venv') {
             steps {
                 sh '''
-                    python3 -m venv .venv
-                    . .venv/bin/activate
-                    pip install --break-system-packages -r requirements.txt
+                python3 -m venv .venv
+                . .venv/bin/activate
+                pip install --upgrade pip
+                pip install pandas scikit-learn joblib
                 '''
-            }
-        }
-
-        stage('Build') {
-            steps {
-                script {
-                    echo "Running build..."
-                    sh "python3 ml/failure_simulation.py build"
-
-                    build_time = sh(script: "grep DURATION: build.log | awk '{print \$2}'", returnStdout: true).trim()
-                }
-            }
-        }
-
-        stage('Test') {
-            steps {
-                script {
-                    echo "Running tests..."
-                    sh "python3 ml/failure_simulation.py test"
-
-                    test_time = sh(script: "grep DURATION: test.log | awk '{print \$2}'", returnStdout: true).trim()
-                }
-            }
-        }
-
-        stage('Deploy') {
-            steps {
-                script {
-                    echo "Deploying..."
-                    sh "python3 ml/failure_simulation.py deploy"
-
-                    deploy_time = sh(script: "grep DURATION: deploy.log | awk '{print \$2}'", returnStdout: true).trim()
-                }
-            }
-        }
-
-        stage('Log Real Metrics') {
-            steps {
-                script {
-                    sh """
-                        . .venv/bin/activate
-                        python3 ml/log_real_metrics.py --build ${build_time} --test ${test_time} --deploy ${deploy_time}
-                    """
-                }
             }
         }
 
         stage('Train ML Model') {
             steps {
+                sh '''
+                . .venv/bin/activate
+                python3 ml/train_model.py
+                '''
+            }
+        }
+
+        stage('Simulate Pipeline Execution') {
+            steps {
                 script {
-                    sh """
-                        . .venv/bin/activate
-                        python3 ml/train_model.py
-                    """
+                    def buildTime = sh(script: "python3 ml/failure_simulation.py build", returnStdout: true).trim()
+                    echo "Build simulation: ${buildTime}"
+
+                    def testTime = sh(script: "python3 ml/failure_simulation.py test", returnStdout: true).trim()
+                    echo "Test simulation: ${testTime}"
+
+                    def deployTime = sh(script: "python3 ml/failure_simulation.py deploy", returnStdout: true).trim()
+                    echo "Deploy simulation: ${deployTime}"
+
+                    env.BUILD_TIME = buildTime
+                    env.TEST_TIME = testTime
+                    env.DEPLOY_TIME = deployTime
                 }
             }
         }
 
-        stage('Anomaly Detection') {
+        stage('Run Anomaly Detection') {
             steps {
-                script {
-                    sh """
-                        . .venv/bin/activate
-                        python3 ml/detect_anomaly.py ${build_time} ${test_time} ${deploy_time}
-                    """
-                }
+                sh '''
+                . .venv/bin/activate
+                python3 ml/detect_anomaly.py $BUILD_TIME $TEST_TIME $DEPLOY_TIME
+                '''
             }
+        }
+
+        stage('AI Anomaly Stress Test') {
+            steps {
+                sh '''
+                . .venv/bin/activate
+                python3 ml/test_anomaly_model.py
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finished."
         }
     }
 }
