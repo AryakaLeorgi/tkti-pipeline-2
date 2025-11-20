@@ -1,38 +1,49 @@
-import sys
 import joblib
 import numpy as np
-import pandas as pd
+import sys
+import random
 
-REQUIRED_COLUMNS = ['BuildTime', 'TestTime', 'DeployTime']
+MODEL_PATH = "ml/model.pkl"
 
-# Jika argumen kosong → generate random data
-if len(sys.argv) == 1:
-    print("[WARNING] Tidak ada input dari pipeline — menggunakan random data untuk anomaly check.")
-    build = round(np.random.uniform(1.0, 5.0), 3)
-    test = round(np.random.uniform(1.0, 5.0), 3)
-    deploy = round(np.random.uniform(1.0, 5.0), 3)
-    values = [build, test, deploy]
-else:
-    # Input harus 3 angka
-    values = list(map(float, sys.argv[1:]))
-    if len(values) != 3:
-        raise ValueError(
-            f"Jumlah input salah! Anda memberikan {len(values)}, "
-            f"namun model membutuhkan 3 input: {REQUIRED_COLUMNS}"
-        )
+def load_model():
+    return joblib.load(MODEL_PATH)
 
-print(f"[INFO] Anomaly Input: {values}")
+def generate_random_input():
+    return [
+        round(random.uniform(0.5, 5.0), 3),  # BuildTime
+        round(random.uniform(0.5, 5.0), 3),  # TestTime
+        round(random.uniform(0.5, 5.0), 3)   # DeployTime
+    ]
 
-# Load model
-model = joblib.load("ml/model.pkl")
+if __name__ == "__main__":
+    model = load_model()
 
-# Convert to dataframe
-df = pd.DataFrame([values], columns=REQUIRED_COLUMNS)
+    # Ambil input dari argumen pipeline
+    if len(sys.argv) == 4:
+        try:
+            bt = float(sys.argv[1])
+            tt = float(sys.argv[2])
+            dt = float(sys.argv[3])
+            features = [bt, tt, dt]
+        except ValueError:
+            print("[ERROR] Input harus berupa angka.")
+            exit(1)
+    else:
+        print("[WARNING] Tidak ada input dari pipeline — menggunakan random data untuk anomaly check.")
+        features = generate_random_input()
 
-# Predict anomaly
-prediction = model.predict(df)[0]
-score = model.predict_proba(df)[0][1]
+    print(f"[INFO] Anomaly Input: {features}")
 
-print("\n=== ANOMALY RESULT ===")
-print(f"Prediction: {'ANOMALY' if prediction == 1 else 'NORMAL'}")
-print(f"Score: {score:.4f}")
+    arr = np.array([features])
+    prediction = model.predict(arr)[0]
+    score = model.predict_proba(arr)[0][1]
+
+    print("\n=== ANOMALY RESULT ===")
+    print("Prediction:", "ANOMALY" if prediction == 1 else "NORMAL")
+    print(f"Score: {score:.4f}")
+
+    # === OUTPUT FLAG FOR JENKINS ===
+    if prediction == 1:
+        print("ANOMALY_FLAG=true")
+    else:
+        print("ANOMALY_FLAG=false")
