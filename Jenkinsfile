@@ -8,7 +8,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/AryakaLeorgi/tkti-pipeline-2.git', branch: 'new-chat'
+                git url: 'https://github.com/AryakaLeorgi/tkti-pipeline-2.git', branch: 'main'
             }
         }
 
