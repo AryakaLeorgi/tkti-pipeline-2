@@ -1,6 +1,7 @@
 import json
 import torch
-from model import PipelineDiagnosisModel
+from .model import PipelineDiagnosisModel
+
 
 def infer(text_emb, graph_emb):
     model = PipelineDiagnosisModel()
