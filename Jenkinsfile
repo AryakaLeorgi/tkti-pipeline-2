@@ -27,7 +27,7 @@ pipeline {
             steps {
                 sh """
                     . venv/bin/activate
-                    python src/main.py --input build.xml --output report.json
+                    python -m src.main --input build.xml --output report.json
                 """
             }
         }
