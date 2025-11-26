@@ -16,3 +16,8 @@ def graph_to_vector(features):
         features["property_count"],
         len(features["javac_flags"]),
     ]
+
+def tokenize_to_vector(text):
+    # simple fallback tokenizer — customize as needed
+    tokens = text.lower().split()
+    return [hash(t) % 10000 for t in tokens]
