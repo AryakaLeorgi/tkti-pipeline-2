@@ -20,15 +20,16 @@ def load_data():
     return df
 
 def preprocess(df):
-    df["Success"] = df["Success"].astype(int)  # target
+    df["Success"] = df["Success"].astype(int)
+    df["FailureReason"] = df["FailureReason"].fillna("None")
+    df["FailureReasonEncoded"] = df["FailureReason"].astype("category").cat.codes
 
-    # ❌ REMOVE FailureReasonEncoded
-    FEATURES = ["BuildTime", "TestTime", "DeployTime"]
+    # PENTING: kolom ini harus sama dgn detect_anomaly
+    features = df[["BuildTime", "TestTime", "DeployTime", "FailureReasonEncoded"]]
+    labels = df["Success"]
 
-    X = df[FEATURES]
-    y = df["Success"]
+    return features, labels, df
 
-    return X, y, FEATURES
 
 def train(X, y):
     X_train, X_test, y_train, y_test = train_test_split(
