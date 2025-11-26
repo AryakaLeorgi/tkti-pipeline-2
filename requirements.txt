@@ -1,6 +1,6 @@
 networkx
 lxml
-torch
+torch==2.3.0
 transformers
 docker
 scikit-learn
