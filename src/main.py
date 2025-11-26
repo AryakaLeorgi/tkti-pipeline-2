@@ -1,4 +1,5 @@
 import argparse
+import json
 from ant_parser.parser import AntParser
 from ml.infer import infer
 
@@ -16,9 +17,14 @@ def run():
     # Run ML inference
     result = infer(g, feats, args.issue)
 
-    # Save JSON output string
+    # Convert result to a JSON-safe format
+    output = {
+        "prediction": int(result)  # ensure numpy.int64 → int
+    }
+
+    # Write JSON output
     with open(args.output, "w") as f:
-        f.write(result)
+        f.write(json.dumps(output, indent=2))
 
 if __name__ == "__main__":
     run()
