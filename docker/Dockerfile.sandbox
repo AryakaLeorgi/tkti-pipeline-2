@@ -1,6 +1,7 @@
-FROM openjdk:11-slim
+# Use modern OpenJDK 11 base image (old openjdk:11-slim is removed)
+FROM eclipse-temurin:11-jdk
 
-# Install Ant
+# Install Ant + Python
 RUN apt-get update && \
     apt-get install -y ant python3 python3-pip && \
     apt-get clean
@@ -12,5 +13,5 @@ WORKDIR /workspace
 COPY requirements-sandbox.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt || true
 
-# The runner script is invoked by Jenkins
+# Runner invoked by Jenkins
 CMD ["python3", "/workspace/src/sandbox/runner.py"]
