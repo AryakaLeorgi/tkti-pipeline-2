@@ -27,10 +27,12 @@ pipeline {
             steps {
                 sh """
                     . venv/bin/activate
+                    export PYTHONPATH=\$PWD/src
                     python -m src.main --input build.xml --output report.json
                 """
             }
         }
+
 
         stage('Run Sandbox Build') {
             steps {
