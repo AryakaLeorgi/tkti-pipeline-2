@@ -13,12 +13,10 @@ def run():
     ant = AntParser(args.input)
     g, feats = ant.parse()
 
-    # Use issue description passed via CLI
-    description = args.issue
-
     # Run ML inference
-    result = infer(g, feats, description)
+    result = infer(g, feats, args.issue)
 
+    # Save JSON output string
     with open(args.output, "w") as f:
         f.write(result)
 
