@@ -1,19 +1,26 @@
+import argparse
 from ant_parser.parser import AntParser
-from ml.utils import tokenize, graph_to_vector
 from ml.infer import infer
 
 def run():
-    parser = AntParser("build.xml")
-    g, feats = parser.parse()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--input", required=True)
+    parser.add_argument("--output", required=True)
+    parser.add_argument("--issue", required=False, default="Build failed due to unknown error")
+    args = parser.parse_args()
 
-    text = input("Describe the issue: ")
-    text_vec = tokenize(text)
-    graph_vec = graph_to_vector(feats)
+    # Parse Ant build.xml
+    ant = AntParser(args.input)
+    g, feats = ant.parse()
 
-    category, confidence = infer(text_vec, graph_vec)
+    # Use issue description passed via CLI
+    description = args.issue
 
-    print("Diagnosis:", category)
-    print("Confidence:", confidence)
+    # Run ML inference
+    result = infer(g, feats, description)
+
+    with open(args.output, "w") as f:
+        f.write(result)
 
 if __name__ == "__main__":
     run()
