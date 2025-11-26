@@ -2,35 +2,65 @@ import random
 import json
 import os
 
-LOG_PATH = "ci/error_log.json"
-os.makedirs("ci", exist_ok=True)
+OUTPUT_DIR = "ci/generated_errors"
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-failure_types = [
-    "MissingDependency",
-    "NetworkTimeout",
-    "PackageVersionConflict",
-    "TestAssertionError",
-    "ContainerBuildFailure",
-    "KubernetesConfigInvalid",
-    "SecurityVulnerabilityFound"
-]
+def simulate_error():
+    """
+    Generate one synthetic pipeline anomaly case.
+    Returns a dict describing the anomaly.
+    """
 
-# Random trigger failure
-trigger_failure = random.random() < 0.35  # 35% chance
+    error_types = [
+        {
+            "type": "dependency_failure",
+            "build_time": random.randint(200, 400),
+            "test_fail_rate": random.uniform(0.1, 0.3),
+            "cpu_load": random.uniform(0.6, 0.9),
+            "message": "Dependency installation failed due to version conflict."
+        },
+        {
+            "type": "test_flaky",
+            "build_time": random.randint(50, 200),
+            "test_fail_rate": random.uniform(0.3, 0.6),
+            "cpu_load": random.uniform(0.3, 0.5),
+            "message": "Unit tests show inconsistent output — flaky behaviour."
+        },
+        {
+            "type": "resource_exhaustion",
+            "build_time": random.randint(400, 700),
+            "test_fail_rate": random.uniform(0.05, 0.2),
+            "cpu_load": random.uniform(0.9, 1.0),
+            "message": "CPU or RAM exhaustion detected."
+        },
+        {
+            "type": "network_failure",
+            "build_time": random.randint(150, 350),
+            "test_fail_rate": random.uniform(0.0, 0.1),
+            "cpu_load": random.uniform(0.2, 0.4),
+            "message": "Network timeout during artifact download."
+        }
+    ]
 
-if trigger_failure:
-    failure = random.choice(failure_types)
-    message = f"Simulated CI failure: {failure}"
-else:
-    failure = "None"
-    message = "No CI failure simulated."
+    chosen = random.choice(error_types)
+    return chosen
 
-data = {
-    "ci_failure": failure,
-    "message": message
-}
 
-with open(LOG_PATH, "w") as f:
-    json.dump(data, f, indent=4)
+def save_error(error_case):
+    """ Save to JSON for later ML training """
+    filename = f"{OUTPUT_DIR}/error_{error_case['type']}_{random.randint(1000,9999)}.json"
 
-print(f"Simulated failure: {failure}")
+    with open(filename, "w") as f:
+        json.dump(error_case, f, indent=4)
+
+    return filename
+
+
+if __name__ == "__main__":
+    err = simulate_error()
+
+    if err:
+        file = save_error(err)
+        print(f"[OK] Simulated failure: {err['type']} → saved to {file}")
+    else:
+        print("[ERR] simulate_error() returned None")
