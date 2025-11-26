@@ -1,33 +1,44 @@
-import json
-import torch
-from ml.model import PipelineDiagnosisModel
+# src/ml/infer.py
+
 from ml.utils import tokenize_to_vector, graph_features_to_vector
+import joblib
+import os
+import numpy as np
+
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "..", "model")
+MODEL_PATH = os.path.join(MODEL_DIR, "model.pkl")
 
 
-def infer(g, feats, description: str):
-    # 1. Convert text -> vector -> tensor
+def load_model():
+    if os.path.exists(MODEL_PATH):
+        return joblib.load(MODEL_PATH)
+    return None
+
+
+def infer(graph, features, description):
+    """
+    Combine:
+    - graph features (dict)
+    - ML features vector
+    - text description
+    Then run ML prediction.
+    """
+
+    model = load_model()
+    if model is None:
+        raise RuntimeError(f"Model not found at: {MODEL_PATH}")
+
+    # convert every part into numeric vectors
     text_vec = tokenize_to_vector(description)
-    text_emb = torch.tensor(text_vec, dtype=torch.float32).unsqueeze(0)
+    graph_vec = graph_features_to_vector(graph)
 
-    # 2. Convert graph features -> vector -> tensor
-    graph_vec = graph_features_to_vector(feats)
-    graph_emb = torch.tensor(graph_vec, dtype=torch.float32).unsqueeze(0)
+    # 'features' is already a numeric vector from your parser
+    features_vec = features if isinstance(features, list) else []
 
-    # 3. Load model
-    model = PipelineDiagnosisModel()
-    model.load_state_dict(torch.load("data/model.pth"))
-    model.eval()
+    # combine all into single ML vector
+    full_vector = np.array(graph_vec + features_vec + text_vec).reshape(1, -1)
 
-    # 4. Inference
-    with torch.no_grad():
-        out = model(text_emb, graph_emb)
-        probs = torch.softmax(out, dim=-1)
-        category = int(torch.argmax(probs))
-        confidence = float(torch.max(probs))
+    # run prediction
+    prediction = model.predict(full_vector)[0]
 
-    # 5. Return JSON text (main.py expects a string)
-    return json.dumps({
-        "category": category,
-        "confidence": confidence,
-        "description_used": description
-    }, indent=2)
+    return prediction

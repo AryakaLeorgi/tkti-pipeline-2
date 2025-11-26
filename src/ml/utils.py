@@ -1,23 +1,30 @@
-import numpy as np
+# src/ml/utils.py
+
 import re
 
-def tokenize(text):
-    tokens = re.findall(r"\w+", text.lower())
-    vec = np.zeros(128)
-    vec[: min(len(tokens), 128)] = np.arange(min(len(tokens), 128))
-    return vec.tolist()
-
-def graph_to_vector(features):
-    return [
-        features["target_count"],
-        features["task_count"],
-        int(features["uses_parallel"]),
-        int(features["uses_junit"]),
-        features["property_count"],
-        len(features["javac_flags"]),
-    ]
-
 def tokenize_to_vector(text):
-    # simple fallback tokenizer — customize as needed
-    tokens = text.lower().split()
-    return [hash(t) % 10000 for t in tokens]
+    """
+    Tokenize the text and convert tokens into simple numeric vector.
+    This is a placeholder tokenizer — adjust as needed.
+    """
+    if text is None:
+        return []
+
+    # simple lowercase split tokenizer
+    tokens = re.findall(r"\w+", text.lower())
+
+    # convert each token to a simple hash-based ID
+    vec = [hash(t) % 10000 for t in tokens]
+    return vec
+
+
+def graph_features_to_vector(features):
+    """
+    Convert graph features (dict) into a stable numeric vector.
+    """
+    if not isinstance(features, dict):
+        return []
+
+    # sort keys alphabetically for deterministic ordering
+    keys = sorted(features.keys())
+    return [features[k] for k in keys]
