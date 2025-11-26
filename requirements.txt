@@ -1,4 +1,7 @@
-pandas
+networkx
+lxml
+torch
+transformers
+docker
 scikit-learn
-joblib
-numpy
+jsonlines

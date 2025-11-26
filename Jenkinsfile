@@ -2,89 +2,49 @@ pipeline {
     agent any
 
     environment {
-        PYTHON = "python3"
-        VENV = ".venv"
+        PYTHON = "/usr/bin/python3"
     }
 
     stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/AryakaLeorgi/tkti-pipeline-2.git', branch: 'new-chat'
+            }
+        }
 
-        stage('Setup Python venv') {
+        stage('Setup Python Env') {
             steps {
                 sh """
-                    ${env.PYTHON} -m venv ${env.VENV}
-                    . ${env.VENV}/bin/activate
+                    python3 -m venv venv
+                    . venv/bin/activate
                     pip install --upgrade pip
-                    pip install pandas scikit-learn joblib numpy requests
+                    pip install -r requirements.txt
                 """
             }
         }
 
-        stage('Generate Synthetic Dataset') {
+        stage('Run TKTI Analysis') {
             steps {
                 sh """
-                    . ${env.VENV}/bin/activate
-                    python3 generate_pipeline_dataset.py
+                    . venv/bin/activate
+                    python src/main.py --input build.xml --output report.json
                 """
             }
         }
 
-        stage('Inject Anomaly Cases') {
+        stage('Run Sandbox Build') {
             steps {
                 sh """
-                    . ${env.VENV}/bin/activate
-                    python3 ci/simulate_error.py || true
+                    docker build -f docker/Dockerfile.sandbox -t tkti-sandbox .
+                    docker run --rm -v \$PWD:/workspace tkti-sandbox
                 """
             }
         }
 
-        stage('Train ML Model') {
+        stage('Archive Results') {
             steps {
-                sh """
-                    . ${env.VENV}/bin/activate
-                    python3 ml/train_model.py
-                """
+                archiveArtifacts artifacts: 'report.json', fingerprint: true
             }
-        }
-
-        stage('Run Anomaly Detection') {
-            steps {
-                script {
-                    def result = sh(
-                        script: ". ${env.VENV}/bin/activate && python3 ml/detect_anomaly.py",
-                        returnStdout: true
-                    ).trim()
-
-                    echo "=== ANOMALY DETECTOR OUTPUT ==="
-                    echo result
-                    echo "================================"
-
-                    if (result.contains("ANOMALY_FLAG=true")) {
-                        echo "⚠ Detected potential anomaly!"
-                        env.ANOMALY_DETECTED = "true"
-                    } else {
-                        env.ANOMALY_DETECTED = "false"
-                    }
-                }
-            }
-        }
-
-        stage('AI Root Cause Analysis') {
-            when {
-                expression { return env.ANOMALY_DETECTED == "true" }
-            }
-            steps {
-                sh """
-                    . ${env.VENV}/bin/activate
-                    python3 ml/ai_root_cause.py > ml_report.txt
-                """
-            }
-        }
-    }
-
-    post {
-        always {
-            echo "Pipeline finished."
-            archiveArtifacts artifacts: 'ml_report.txt', allowEmptyArchive: true
         }
     }
 }
