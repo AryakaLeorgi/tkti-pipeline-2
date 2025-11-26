@@ -1,7 +1,4 @@
-networkx
-lxml
-torch==2.3.0
-transformers
-docker
+pandas
 scikit-learn
-jsonlines
+joblib
+numpy
