@@ -14,7 +14,25 @@ pipeline {
                     ${env.PYTHON} -m venv ${env.VENV}
                     . ${env.VENV}/bin/activate
                     pip install --upgrade pip
-                    pip install pandas scikit-learn joblib requests
+                    pip install pandas scikit-learn joblib numpy requests
+                """
+            }
+        }
+
+        stage('Generate Synthetic Dataset') {
+            steps {
+                sh """
+                    . ${env.VENV}/bin/activate
+                    python3 generate_pipeline_dataset.py
+                """
+            }
+        }
+
+        stage('Inject Anomaly Cases') {
+            steps {
+                sh """
+                    . ${env.VENV}/bin/activate
+                    python3 ci/simulate_error.py || true
                 """
             }
         }
@@ -28,7 +46,6 @@ pipeline {
             }
         }
 
-
         stage('Run Anomaly Detection') {
             steps {
                 script {
@@ -37,9 +54,12 @@ pipeline {
                         returnStdout: true
                     ).trim()
 
+                    echo "=== ANOMALY DETECTOR OUTPUT ==="
                     echo result
+                    echo "================================"
 
                     if (result.contains("ANOMALY_FLAG=true")) {
+                        echo "⚠ Detected potential anomaly!"
                         env.ANOMALY_DETECTED = "true"
                     } else {
                         env.ANOMALY_DETECTED = "false"
@@ -48,27 +68,23 @@ pipeline {
             }
         }
 
-        stage('AI Auto Fix (Groq)') {
+        stage('AI Root Cause Analysis') {
             when {
-                expression { env.ANOMALY_DETECTED == "true" }
-            }
-            environment {
-                GROQ_API_KEY = credentials('groq-api-key')
+                expression { return env.ANOMALY_DETECTED == "true" }
             }
             steps {
                 sh """
-                    echo "[INFO] Anomaly detected — running AI auto-fix..."
                     . ${env.VENV}/bin/activate
-                    python3 ml/auto_fix_groq.py
+                    python3 ml/ai_root_cause.py > ml_report.txt
                 """
             }
         }
-
     }
 
     post {
         always {
             echo "Pipeline finished."
+            archiveArtifacts artifacts: 'ml_report.txt', allowEmptyArchive: true
         }
     }
 }
