@@ -1,4 +1,33 @@
-pandas
-scikit-learn
-joblib
-numpy
+# ==== FastAPI + Uvicorn ====
+fastapi==0.115.2
+uvicorn==0.32.0
+pydantic==2.9.2
+
+# ==== ML Core ====
+scikit-learn==1.5.2
+numpy==2.1.1
+pandas==2.2.3
+scipy==1.14.1
+
+# ==== NLP / LLM Support ====
+transformers==4.45.2
+sentencepiece==0.2.0
+torch==2.4.1
+
+# ==== Utilities ====
+python-dotenv==1.0.1
+pyyaml==6.0.2
+joblib==1.4.2
+
+# ==== Log Parsing ====
+regex==2024.9.11
+
+# ==== HTTP / Fetching CI/CD Logs ====
+requests==2.32.3
+
+# ==== Optional: for notebooks ====
+jupyter==1.1.1
+
+# ==== Optional: for training visualizations ====
+matplotlib==3.9.2
+seaborn==0.13.2

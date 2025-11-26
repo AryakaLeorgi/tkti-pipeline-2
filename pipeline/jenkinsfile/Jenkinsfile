@@ -1,0 +1,32 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('BUILD STAGE') {
+            steps {
+                sh 'echo "Building project..."'
+                sh 'mvn clean install'
+            }
+        }
+
+        stage('TEST STAGE') {
+            steps {
+                sh 'echo "Running tests..."'
+                sh 'mvn test'
+            }
+        }
+
+        stage('DEPLOY STAGE') {
+            steps {
+                sh 'echo "Deploying to staging..."'
+                sh 'kubectl apply -f k8s.yaml'
+            }
+        }
+    }
+
+    post {
+        failure {
+            archiveArtifacts artifacts: '**/target/*.log'
+        }
+    }
+}

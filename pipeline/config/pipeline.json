@@ -1,0 +1,4 @@
+{
+  "pipeline_name": "sample-ci-pipeline",
+  "stages": ["build", "test", "deploy"]
+}
