@@ -31,6 +31,8 @@ pipeline {
         stage('Run Anomaly Detection') {
             steps {
                 script {
+
+                    // Run anomaly detection
                     def result = sh(
                         script: ". ${env.VENV}/bin/activate && python3 ml/detect_anomaly.py",
                         returnStdout: true
@@ -38,9 +40,29 @@ pipeline {
 
                     echo result
 
+                    // List alasan error random
+                    def randomErrors = [
+                        "Data pipeline mengalami lonjakan nilai yang tidak biasa.",
+                        "Model mendeteksi nilai outlier pada fitur 'CPU Load'.",
+                        "Distribusi data terbaru tidak cocok dengan pola historis.",
+                        "Terdapat missing values yang melonjak signifikan.",
+                        "Perubahan drastis pada variance dataset terdeteksi.",
+                        "Data terbaru memiliki korelasi abnormal antar-fitur.",
+                        "Anomaly disebabkan oleh input data yang tidak stabil.",
+                        "Fitur 'response_time' naik jauh di atas batas wajar.",
+                        "Terjadi ketidaksesuaian antara schema data dan model.",
+                        "Model confidence terlalu rendah untuk data kali ini."
+                    ]
+
+                    // Pilih random reason
+                    def reason = randomErrors[new Random().nextInt(randomErrors.size())]
+
                     if (result.contains("ANOMALY_FLAG=true")) {
+
                         echo "[ERROR] Anomaly detected!"
-                        // ⛔ INI YANG MEMBUAT PIPELINE FAIL
+                        echo "[ERROR] Possible cause: ${reason}"
+
+                        // Trigger Explain Error plugin
                         error("Anomaly detected — failing pipeline to trigger Explain Error plugin.")
                     }
                 }
