@@ -7,7 +7,6 @@ pipeline {
     }
 
     stages {
-
         stage('Setup Python venv') {
             steps {
                 sh """
@@ -28,7 +27,6 @@ pipeline {
             }
         }
 
-
         stage('Run Anomaly Detection') {
             steps {
                 script {
@@ -38,35 +36,21 @@ pipeline {
                     ).trim()
 
                     echo result
-
-                    if (result.contains("ANOMALY_FLAG=true")) {
-                        env.ANOMALY_DETECTED = "true"
-                    } else {
-                        env.ANOMALY_DETECTED = "false"
-                    }
+                    env.ANOMALY_DETECTED = result.contains("ANOMALY_FLAG=true") ? "true" : "false"
                 }
             }
         }
-
-        stage('AI Auto Fix (Groq)') {
-            when {
-                expression { env.ANOMALY_DETECTED == "true" }
-            }
-            environment {
-                GROQ_API_KEY = credentials('groq-api-key')
-            }
-            steps {
-                sh """
-                    echo "[INFO] Anomaly detected — running AI auto-fix..."
-                    . ${env.VENV}/bin/activate
-                    python3 ml/auto_fix_groq.py
-                """
-            }
-        }
-
     }
 
     post {
+        failure {
+            // Jika pipeline gagal di tahap manapun: otomatis dijelaskan oleh AI
+            explainError(
+                // optional: batasi analisa log
+                maxLines: 300,
+                logPattern: '(?i)(error|failed|exception)'
+            )
+        }
         always {
             echo "Pipeline finished."
         }
