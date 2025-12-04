@@ -7,6 +7,7 @@ pipeline {
     }
 
     stages {
+
         stage('Setup Python venv') {
             steps {
                 sh """
@@ -36,19 +37,23 @@ pipeline {
                     ).trim()
 
                     echo result
-                    env.ANOMALY_DETECTED = result.contains("ANOMALY_FLAG=true") ? "true" : "false"
+
+                    if (result.contains("ANOMALY_FLAG=true")) {
+                        echo "[ERROR] Anomaly detected!"
+                        // ⛔ INI YANG MEMBUAT PIPELINE FAIL
+                        error("Anomaly detected — failing pipeline to trigger Explain Error plugin.")
+                    }
                 }
             }
         }
+
     }
 
     post {
         failure {
-            // Jika pipeline gagal di tahap manapun: otomatis dijelaskan oleh AI
             explainError(
-                // optional: batasi analisa log
-                maxLines: 300,
-                logPattern: '(?i)(error|failed|exception)'
+                maxLines: 200,
+                logPattern: '(?i)(error|failed|exception|traceback)'
             )
         }
         always {
