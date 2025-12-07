@@ -60,37 +60,35 @@ pipeline {
     }
 
 post {
-    unsuccessful {
+    failure {
         echo "==== Build Failed — Running AI Auto-Fix ===="
 
         script {
+            // 1. Send logs → Gemini AI Patch Server
             sh '''
                 echo "[AI] Sending logs to patch server..."
 
-                LOGS=$(sed 's/"/\\\\\\"/g' build_error.log)
+                sed 's/"/\\\\\\"/g' build_error.log > logs.tmp
+                LOGS=$(cat logs.tmp)
 
                 curl -s -X POST http://localhost:3000/patch \
                     -H "Content-Type: application/json" \
-                    -d "{ \\"logs\\": \\"$LOGS\\" }" \
-                    > ai_patch.json || true
+                    -d "{ \\"logs\\": \\"${LOGS}\\" }" \
+                    > ai_patch.json || echo "{}" > ai_patch.json
 
                 echo "[AI] Response:"
-                cat ai_patch.json || true
+                cat ai_patch.json
             '''
 
-            // (patch apply + pr steps unchanged)
+            // 2. Kill patch server AFTER sending logs
+            sh '''
+                echo "[AI] Cleaning up patch server..."
+                if [ -f /var/lib/jenkins/patch_server.pid ]; then
+                    kill $(cat /var/lib/jenkins/patch_server.pid) || true
+                    rm /var/lib/jenkins/patch_server.pid
+                fi
+            '''
         }
-    }
-
-    always {
-        echo "Cleaning up patch server..."
-
-        sh '''
-            if [ -f ~/patch_server.pid ]; then
-                kill $(cat ~/patch_server.pid) || true
-                rm ~/patch_server.pid
-            fi
-        '''
     }
 }
 
