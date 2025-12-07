@@ -1,42 +1,51 @@
 pipeline {
     agent any
 
-    environment {
-        PYTHON = "python3"
-        VENV = ".venv"
-    }
-
     stages {
-        stage('Setup Python venv') {
-            steps {
-                sh """
-                    ${env.PYTHON} -m venv ${env.VENV}
-                    . ${env.VENV}/bin/activate
-                    pip install --upgrade pip
-                    pip install pandas scikit-learn joblib requests
-                """
-            }
-        }
-
-        stage('Train ML Model') {
-            steps {
-                sh """
-                    . ${env.VENV}/bin/activate
-                    python3 ml/train_model.py
-                """
-            }
-        }
-
-        stage('Run Anomaly Detection') {
+        stage('Random Failure Simulation') {
             steps {
                 script {
-                    def result = sh(
-                        script: ". ${env.VENV}/bin/activate && python3 ml/detect_anomaly.py",
-                        returnStdout: true
-                    ).trim()
+                    def failures = [
+                        {
+                            echo "Simulating: Missing dependency"
+                            sh 'npm install this-package-does-not-exist'
+                        },
+                        {
+                            echo "Simulating: Syntax error in JS file"
+                            writeFile file: 'src/broken.js', text: 'console.log("broken"'
+                            sh 'node src/broken.js'
+                        },
+                        {
+                            echo "Simulating: Test failure"
+                            sh '''
+                                echo "test('fail', () => { throw new Error(\\"random test fail\\") })" > random.test.js
+                                npm test
+                            '''
+                        },
+                        {
+                            echo "Simulating: Build command crash"
+                            sh 'exit 2'
+                        },
+                        {
+                            echo "Simulating: Network failure"
+                            sh 'curl http://this.does.not.exist.abc'
+                        },
+                        {
+                            echo "Simulating: Permission denied"
+                            sh '''
+                                touch protected.txt
+                                chmod -r protected.txt
+                                cat protected.txt
+                            '''
+                        },
+                        {
+                            echo "Simulating: Git checkout fail"
+                            sh 'git clone https://github.com/this/does-not-exist.git'
+                        }
+                    ]
 
-                    echo result
-                    env.ANOMALY_DETECTED = result.contains("ANOMALY_FLAG=true") ? "true" : "false"
+                    def randomFailure = failures[new Random().nextInt(failures.size())]
+                    randomFailure()
                 }
             }
         }
@@ -44,15 +53,7 @@ pipeline {
 
     post {
         failure {
-            // Jika pipeline gagal di tahap manapun: otomatis dijelaskan oleh AI
-            explainError(
-                // optional: batasi analisa log
-                maxLines: 300,
-                logPattern: '(?i)(error|failed|exception)'
-            )
-        }
-        always {
-            echo "Pipeline finished."
+            echo "Pipeline failed randomly — explain-error plugin should now analyze this failure."
         }
     }
 }
