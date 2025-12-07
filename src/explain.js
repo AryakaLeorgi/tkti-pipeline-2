@@ -1,26 +1,33 @@
-import fs from "fs";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+const fs = require("fs");
+const axios = require("axios");
+
+const MODEL = process.env.MODEL || "gemini-2.5-flash";
+const API_KEY = process.env.GEMINI_API_KEY;
+
+async function explainError(logs) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`;
+
+    const payload = {
+        contents: [
+            {
+                parts: [
+                    {
+                        text: `You are an expert CI/CD assistant. Explain this Jenkins error:\n\n${logs}`
+                    }
+                ]
+            }
+        ]
+    };
+
+    const res = await axios.post(url, payload);
+    return res.data.candidates[0].content.parts[0].text;
+}
 
 async function main() {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const log = fs.readFileSync(process.argv[2], "utf8");
-
-    const prompt = `
-    You are an expert CI/CD assistant. Explain the following Jenkins pipeline error.
-    Provide:
-
-    1. The root cause  
-    2. What component failed  
-    3. How to fix it  
-
-    Logs:
-        ${log}
-    `;
-
-    const result = await model.generateContent(prompt);
-    console.log("AI Explanation:\n", result.response.text());
+    const logPath = process.argv[2];
+    const logs = fs.readFileSync(logPath, "utf8");
+    const result = await explainError(logs);
+    console.log(result);
 }
 
 main();

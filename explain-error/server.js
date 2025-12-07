@@ -1,5 +1,5 @@
 import express from "express";
-import { explainError } from "./explain.js";
+import { explainError } from "../src/explain.js";
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
