@@ -48,22 +48,15 @@ pipeline {
             }
         }
     }
-
     post {
-
         failure {
             echo "Build failed. Generating AI explanation..."
-
-            sh """
-                cd src
+            sh '''
+                cd explain-error
+                npm install
                 node explain.js ../build_error.log
-            """
-
-            echo "AI explanation generated."
-        }
-
-        always {
-            echo "Pipeline completed."
+            '''
         }
     }
+
 }

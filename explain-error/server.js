@@ -1,5 +1,5 @@
 import express from "express";
-import { explainError } from "../src/explain.js";
+import { explainLogs } from "./handler.js";
 
 const app = express();
 app.use(express.json({ limit: "5mb" }));
@@ -7,8 +7,7 @@ app.use(express.json({ limit: "5mb" }));
 app.post("/explain", async (req, res) => {
     try {
         const logs = req.body.logs;
-
-        const result = await explainError(logs);
+        const result = await explainLogs(logs);
         res.json({ explanation: result });
     } catch (err) {
         console.error(err);
