@@ -30,7 +30,7 @@ stage('Test Gemini Key') {
             curl -s -H "Content-Type: application/json" \
                 -H "x-goog-api-key: $GEMINI_API_KEY" \
                 -d '{"contents":[{"parts":[{"text":"hello"}]}]}' \
-                https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent \
+                https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent \
                 -o gemini_test_response.json
 
             echo "Response from Gemini:"
