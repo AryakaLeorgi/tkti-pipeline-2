@@ -2,168 +2,100 @@ pipeline {
     agent any
 
     environment {
-        NODE_ENV = "ci"
-        GH_REPO = "AryakaLeorgi/tkti-pipeline-2"
+        NODE_OPTIONS = "--max-old-space-size=512"
     }
 
     stages {
 
-        /* ------------------------------
-         * CHECKOUT
-         * ------------------------------ */
-        stage("Checkout") {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        /* ------------------------------
-         * INSTALL DEPENDENCIES
-         * ------------------------------ */
-        stage("Install Dependencies") {
+        stage('Install Dependencies') {
             steps {
                 sh """
-                    cd src
-                    npm install
+                cd src
+                npm install
                 """
             }
         }
 
-        /* ------------------------------
-         * START AI PATCH SERVER
-         * ------------------------------ */
-stage("Start AI Patch Server") {
-    steps {
-        withCredentials([string(credentialsId: 'GEMINI_API_KEY', variable: 'GEMINI_KEY')]) {
-
-            sh """
-                echo "[AI] Installing dependencies for patch server..."
+        stage('Start AI Patch Server') {
+            environment {
+                GEMINI_API_KEY = credentials('gemini-key')
+            }
+            steps {
+                sh """
+                echo "[AI] Installing dependencies..."
                 cd explain-error
                 npm install
 
-                echo "[AI] Starting patch server with Gemini key..."
-
-                nohup env GEMINI_API_KEY=\${GEMINI_KEY} node patch-server.js \
-                    > /var/lib/jenkins/ai_patch_server.log 2>&1 &
+                echo "[AI] Starting patch server..."
+                nohup env GEMINI_API_KEY=\$GEMINI_API_KEY node patch-server.js > patch.log 2>&1 &
 
                 echo \$! > /var/lib/jenkins/patch_server.pid
-                sleep 2
-                echo "[AI] Patch server PID: \$(cat /var/lib/jenkins/patch_server.pid)"
-            """
-        }
-    }
-}
 
-        /* ------------------------------
-         * SIMULATED FAILURE
-         * ------------------------------ */
-        stage("Run Tests (simulate failure)") {
+                sleep 2
+
+                # Health check with retries
+                for i in {1..10}; do
+                    echo "[AI] Waiting for /health..."
+                    curl -s http://localhost:3000/health && break
+                    sleep 1
+                done
+                """
+            }
+        }
+
+        stage('Run Tests (simulate failure)') {
             steps {
                 script {
-                    writeFile file: "build_error.log", text: "Simulated Webpack failure\n"
+                    writeFile file: "build.log", text: "Simulated CI failure: Webpack compilation error.\n"
                     error("Simulated CI failure: Webpack compilation error.")
                 }
             }
         }
     }
 
-    /* ----------------------------------------
-     * POST — RUN AI AUTO FIX
-     * ---------------------------------------- */
-post {
-    failure {
-        echo "==== Build Failed — Running AI Auto-Fix ===="
+    post {
+        failure {
 
-        script {
+            echo "==== Build Failed — Running AI Auto-Fix ===="
 
-            echo "[AI] Reading logs..."
-            def logs = readFile("build_error.log").trim()
+            script {
+                def logs = readFile("build.log")
+                writeFile file: "ai_request.json", text: "{ \"logs\": \"${logs.replace('"','\\"')}\" }"
 
-            // Escape JSON + newline safe
-            def safeLogs = logs
-                .replace("\\", "\\\\")
-                .replace("\"", "\\\"")
-                .replace("\n", "\\n")
+                echo "[AI] Sending logs…"
 
-            echo "[AI] Sending logs to patch server..."
-
-            // Write temp request body
-            writeFile file: "ai_request.json", text: """{
-                "logs": "${safeLogs}"
-            }"""
-
-            // Call patch server
-            sh '''
+                sh """
                 curl -s -X POST http://localhost:3000/patch \
                     -H "Content-Type: application/json" \
-                    -d @ai_request.json \
-                    > ai_patch.json
-            '''
+                    -d @ai_request.json > ai_patch.json
+                """
 
-            echo "[AI] Response:"
-            sh "cat ai_patch.json"
+                echo "[AI] Patch response:"
+                sh "cat ai_patch.json"
 
-            // Extract patch
-            sh 'jq -r ".patch" ai_patch.json > ai_fix.diff'
+                def patch = readFile("ai_patch.json")
 
-            def diffContent = readFile("ai_fix.diff").trim()
-
-            if (!diffContent) {
-                echo "[AI] No valid patch produced — skipping PR."
-            } else {
-                echo "[AI] Patch received, applying..."
-
-                sh "git apply ai_fix.diff || true"
-
-                def branch = "ai-fix-${env.BUILD_NUMBER}"
-
-                withCredentials([string(credentialsId: 'GITHUB_TOKEN', variable: 'GHTOKEN')]) {
-
-                    sh """
-                        git config user.email "ai-bot@autofix"
-                        git config user.name "AI Auto Fix Bot"
-
-                        git checkout -b ${branch}
-                        git add .
-                        git commit -m "AI Auto-Fix: Build Failure Patch"
-                        git push https://${GHTOKEN}@github.com/${GH_REPO}.git ${branch}
-                    """
-
-                    // Create PR
-                    def prJson = """
-                        {
-                            "title": "AI Auto-Fix Patch",
-                            "body": "Automated fix generated by Gemini Patch AI.",
-                            "head": "${branch}",
-                            "base": "main"
-                        }
-                    """
-
-                    writeFile file: "pr.json", text: prJson
-
-                    sh """
-                        curl -X POST \
-                            -H "Authorization: token ${GHTOKEN}" \
-                            -H "Accept: application/vnd.github+json" \
-                            https://api.github.com/repos/${GH_REPO}/pulls \
-                            -d @pr.json
-                    """
+                if (!patch.contains('---')) {
+                    echo "[AI] Invalid patch (no diff markers). Skipping PR."
+                } else {
+                    echo "[AI] Patch OK. (PR creation step would go here.)"
                 }
-
-                echo "[AI] Pull request created successfully!"
             }
-        }
 
-        echo "[AI] Cleaning up patch server..."
+            echo "[AI] Cleaning up patch server…"
 
-        sh '''
+            sh """
             if [ -f /var/lib/jenkins/patch_server.pid ]; then
-                kill $(cat /var/lib/jenkins/patch_server.pid) || true
+                kill \$(cat /var/lib/jenkins/patch_server.pid) || true
                 rm /var/lib/jenkins/patch_server.pid
             fi
-        '''
+            """
+        }
     }
-}
-
-
 }

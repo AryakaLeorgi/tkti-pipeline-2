@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 const express = require("express");
 const bodyParser = require("body-parser");
-const fs = require("fs");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const apiKey = process.env.GEMINI_API_KEY;
 
 if (!apiKey) {
-  console.error("Missing GEMINI_API_KEY");
+  console.error("[AI] ERROR: GEMINI_API_KEY missing.");
   process.exit(1);
 }
+
+console.log("[AI] Starting Patch Server…");
 
 const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: "gemini-pro" });
@@ -17,10 +18,16 @@ const model = genAI.getGenerativeModel({ model: "gemini-pro" });
 const app = express();
 app.use(bodyParser.json());
 
+// ---------- Health Check ----------
+app.get("/health", (req, res) => {
+  res.json({ ok: true, ts: Date.now() });
+});
+
+// ---------- Patch Route ----------
 app.post("/patch", async (req, res) => {
   const logs = req.body.logs || "";
 
-  console.log("Logs received:", logs);
+  console.log("[AI] Logs received:", logs.substring(0, 200)); // Don't spam
 
   const prompt = `
 You are an AI that generates Git patches.
@@ -30,8 +37,8 @@ Given CI build logs, produce a correct unified diff (patch) to fix the error.
 
 ### RULES
 - Always return a unified diff starting with --- and +++.
-- If the logs are vague and you cannot determine a fix:
-  - Create a fallback patch that adds a file: "diagnostic.md" containing the logs.
+- If the logs do not contain a clear error, create a fallback patch
+  that adds a diagnostic.md file containing the logs.
 - NEVER return empty output.
 
 ### LOGS:
@@ -40,35 +47,34 @@ ${logs}
 
   try {
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    let text = result.response.text().trim();
 
-    let patch = text;
-
-    // Fallback: ensure patch NEVER empty
-    if (!patch || patch.length < 5) {
-      patch = `
+    if (!text || text.length < 10 || !text.includes("---")) {
+      console.log("[AI] Empty or invalid patch from Gemini. Using fallback.");
+      text = `
 --- /dev/null
 +++ b/diagnostic.md
-@@ -0,0 +1,5 @@
-# Automated Diagnostic
-The build failed but logs were too vague to compute a fix.
+@@ -0,0 +1,20 @@
+# Automatic Diagnostic File
+Gemini could not determine a fix.
 
 ## Logs
 ${logs.split("\n").map((l) => "+ " + l).join("\n")}
 `;
     }
 
-    res.json({ patch });
+    res.json({ patch: text });
   } catch (err) {
-    console.error("Gemini error:", err);
+    console.error("[AI] Gemini error:", err);
 
-    // fallback patch on model failure
     const fallback = `
 --- /dev/null
 +++ b/diagnostic.md
-@@ -0,0 +1,5 @@
+@@ -0,0 +1,20 @@
 # AI Patch Server Failure
-Gemini API failed. Here are the logs:
+Gemini API failed.
+
+## Logs
 ${logs}
 `;
 
@@ -77,5 +83,5 @@ ${logs}
 });
 
 app.listen(3000, () => {
-  console.log("AI Patch Server running on http://localhost:3000");
+  console.log("[AI] Patch Server READY at http://localhost:3000");
 });
