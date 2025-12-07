@@ -1,72 +1,69 @@
 pipeline {
     agent any
 
+    environment {
+        // Load API key from Jenkins credentials securely
+        GEMINI_API_KEY = credentials('GEMINI_API_KEY')
+    }
+
     stages {
 
-        stage('Install Explain Error Service') {
+        stage('Checkout') {
             steps {
-                sh '''
-                    cd explain-error
+                checkout scm
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                sh """
+                    cd src
                     npm install
-                '''
+                """
             }
         }
 
-        stage('Start Explain Error Service') {
-            steps {
-                sh '''
-                    cd explain-error
-                    nohup node server.js > explain.log 2>&1 &
-                    echo $! > explain.pid
-                '''
-            }
-        }
-
-        stage('Run CI/CD Simulation') {
+        stage('Run Tests (with random failure)') {
             steps {
                 script {
-                    echo "Simulating random failure..."
 
-                    // Random fail
-                    def fail = new Random().nextInt(3)
+                    // Random failure simulation
+                    def failReasons = [
+                        "Unit test timeout on module A",
+                        "Dependency missing: lodash",
+                        "SyntaxError: Unexpected token ';'",
+                        "TypeError: Cannot read property 'x' of undefined",
+                        "Build step failed: webpack compilation error",
+                        "ESLint: 23 problems (2 errors, 21 warnings)"
+                    ]
 
-                    if (fail == 0) {
-                        error("Random Failure: Dependency installation failed")
-                    } else if (fail == 1) {
-                        error("Random Failure: Unit test crashed")
-                    } else {
-                        error("Random Failure: Code build failed")
-                    }
+                    def chosenFailReason = failReasons[new Random().nextInt(failReasons.size())]
+
+                    // Save the "error" as log file for AI to analyze
+                    writeFile file: "build_error.log", text: chosenFailReason
+
+                    // Always mark this stage as failed to trigger explain stage
+                    error("Simulated random CI failure: ${chosenFailReason}")
                 }
             }
         }
     }
 
     post {
+
         failure {
-            script {
-                // Collect last 2000 lines of logs
-                def logs = currentBuild.rawBuild.getLog(2000).join("\n")
+            echo "Build failed. Generating AI explanation..."
 
-                // Send to your explain-error service
-                def response = httpRequest(
-                    httpMode: 'POST',
-                    url: "http://localhost:3000/explain",
-                    contentType: 'APPLICATION_JSON',
-                    requestBody: groovy.json.JsonOutput.toJson([logs: logs])
-                )
+            sh """
+                cd src
+                node explain.js ../build_error.log
+            """
 
-                echo "AI Explanation:"
-                echo response.content
-            }
+            echo "AI explanation generated."
         }
 
         always {
-            sh '''
-                if [ -f explain-error/explain.pid ]; then
-                    kill $(cat explain-error/explain.pid) || true
-                fi
-            '''
+            echo "Pipeline completed."
         }
     }
 }
