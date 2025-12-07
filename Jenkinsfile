@@ -32,27 +32,33 @@ pipeline {
         /* ------------------------------
          * START AI PATCH SERVER
          * ------------------------------ */
-stage("Start AI Patch Server") {
-    steps {
-        withCredentials([string(credentialsId: 'GEMINI_API_KEY', variable: 'GEMINI_KEY')]) {
+stage('Start AI Patch Server') {
+  steps {
+    withCredentials([string(credentialsId: 'GEMINI_KEY', variable: 'GEMINI_KEY')]) {
+      sh '''
+        echo "[AI] Installing dependencies for patch server..."
+        cd explain-error
+        npm install
 
-            sh """
-                echo "[AI] Installing dependencies for patch server..."
-                cd explain-error
-                npm install
+        echo "[AI] Starting patch server..."
+        nohup env GEMINI_API_KEY="$GEMINI_KEY" node patch-server.js > ../patch_server.log 2>&1 &
+        echo $! > /var/lib/jenkins/patch_server.pid
 
-                echo "[AI] Starting patch server with Gemini key..."
-
-                nohup env GEMINI_API_KEY=\${GEMINI_KEY} node patch-server.js \
-                    > /var/lib/jenkins/ai_patch_server.log 2>&1 &
-
-                echo \$! > /var/lib/jenkins/patch_server.pid
-                sleep 2
-                echo "[AI] Patch server PID: \$(cat /var/lib/jenkins/patch_server.pid)"
-            """
+        sleep 3
+        echo "[AI] Checking health..."
+        curl -s http://localhost:3000/health || {
+          echo "❌ Patch server failed to start!"
+          echo "---- Logs ----"
+          cat ../patch_server.log
+          exit 1
         }
+
+        echo "[AI] Patch server OK"
+      '''
     }
+  }
 }
+
 
         /* ------------------------------
          * SIMULATED FAILURE
