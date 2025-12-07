@@ -23,6 +23,23 @@ pipeline {
             }
         }
 
+stage('Test Gemini Key') {
+    steps {
+        sh '''
+            echo "Testing Gemini API key..."
+            curl -s -H "Content-Type: application/json" \
+                -H "x-goog-api-key: $GEMINI_API_KEY" \
+                -d '{"contents":[{"parts":[{"text":"hello"}]}]}' \
+                https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent \
+                -o gemini_test_response.json
+
+            echo "Response from Gemini:"
+            cat gemini_test_response.json
+        '''
+    }
+}
+
+
 stage('Start AI Patch Server') {
     steps {
         sh '''
