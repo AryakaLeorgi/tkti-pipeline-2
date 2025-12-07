@@ -85,3 +85,6 @@ ${logs}
 app.listen(3000, () => {
   console.log("[AI] Patch Server READY at http://localhost:3000");
 });
+app.get("/health", (req, res) => {
+  res.send("OK");
+});
