@@ -2,50 +2,41 @@ pipeline {
     agent any
 
     stages {
-        stage('Random Failure Simulation') {
+
+        stage('Install Explain Error Service') {
+            steps {
+                sh '''
+                    cd explain-error
+                    npm install
+                '''
+            }
+        }
+
+        stage('Start Explain Error Service') {
+            steps {
+                sh '''
+                    cd explain-error
+                    nohup node server.js > explain.log 2>&1 &
+                    echo $! > explain.pid
+                '''
+            }
+        }
+
+        stage('Run CI/CD Simulation') {
             steps {
                 script {
-                    def failures = [
-                        {
-                            echo "Simulating: Missing dependency"
-                            sh 'npm install this-package-does-not-exist'
-                        },
-                        {
-                            echo "Simulating: Syntax error in JS file"
-                            writeFile file: 'src/broken.js', text: 'console.log("broken"'
-                            sh 'node src/broken.js'
-                        },
-                        {
-                            echo "Simulating: Test failure"
-                            sh '''
-                                echo "test('fail', () => { throw new Error(\\"random test fail\\") })" > random.test.js
-                                npm test
-                            '''
-                        },
-                        {
-                            echo "Simulating: Build command crash"
-                            sh 'exit 2'
-                        },
-                        {
-                            echo "Simulating: Network failure"
-                            sh 'curl http://this.does.not.exist.abc'
-                        },
-                        {
-                            echo "Simulating: Permission denied"
-                            sh '''
-                                touch protected.txt
-                                chmod -r protected.txt
-                                cat protected.txt
-                            '''
-                        },
-                        {
-                            echo "Simulating: Git checkout fail"
-                            sh 'git clone https://github.com/this/does-not-exist.git'
-                        }
-                    ]
+                    echo "Simulating random failure..."
 
-                    def randomFailure = failures[new Random().nextInt(failures.size())]
-                    randomFailure()
+                    // Random fail
+                    def fail = new Random().nextInt(3)
+
+                    if (fail == 0) {
+                        error("Random Failure: Dependency installation failed")
+                    } else if (fail == 1) {
+                        error("Random Failure: Unit test crashed")
+                    } else {
+                        error("Random Failure: Code build failed")
+                    }
                 }
             }
         }
@@ -53,7 +44,29 @@ pipeline {
 
     post {
         failure {
-            echo "Pipeline failed randomly — explain-error plugin should now analyze this failure."
+            script {
+                // Collect last 2000 lines of logs
+                def logs = currentBuild.rawBuild.getLog(2000).join("\n")
+
+                // Send to your explain-error service
+                def response = httpRequest(
+                    httpMode: 'POST',
+                    url: "http://localhost:3000/explain",
+                    contentType: 'APPLICATION_JSON',
+                    requestBody: groovy.json.JsonOutput.toJson([logs: logs])
+                )
+
+                echo "AI Explanation:"
+                echo response.content
+            }
+        }
+
+        always {
+            sh '''
+                if [ -f explain-error/explain.pid ]; then
+                    kill $(cat explain-error/explain.pid) || true
+                fi
+            '''
         }
     }
 }
