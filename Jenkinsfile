@@ -23,20 +23,21 @@ pipeline {
             }
         }
 
-        stage('Start AI Patch Server') {
+stage('Start AI Patch Server') {
     steps {
         sh '''
             cd explain-error
-
-            # install npm deps if needed
             npm install
 
-            # run server in background
-            nohup node patch-server.js > ai_patch_server.log 2>&1 &
+            # Start server WITH GEMINI_API_KEY injected
+            nohup env GEMINI_API_KEY=$GEMINI_API_KEY node patch-server.js \
+                > ai_patch_server.log 2>&1 &
+
             sleep 2
         '''
     }
 }
+
 
         stage('Run Tests (simulate random failure)') {
             steps {
