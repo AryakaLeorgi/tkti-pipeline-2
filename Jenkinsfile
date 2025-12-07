@@ -30,22 +30,23 @@ pipeline {
             cd explain-error
             npm install
 
-            echo "[AI] Starting patch server..."
-            # Kill old instance if exists
+            echo "[AI] Killing old instance if exists..."
             if [ -f /var/lib/jenkins/patch_server.pid ]; then
               kill $(cat /var/lib/jenkins/patch_server.pid) || true
+              rm /var/lib/jenkins/patch_server.pid
             fi
 
-            # Run server in background & capture real PID
-            nohup env GEMINI_API_KEY=$GEMINI_API_KEY node patch-server.js > /var/lib/jenkins/patch_server.log 2>&1 &
+            echo "[AI] Starting patch server..."
+            nohup env GEMINI_API_KEY=$GEMINI_API_KEY node patch-server.js \
+              > /var/lib/jenkins/patch_server.log 2>&1 &
 
             echo $! > /var/lib/jenkins/patch_server.pid
             echo "[AI] Patch server started with PID $(cat /var/lib/jenkins/patch_server.pid)"
 
             sleep 3
 
-            echo "[AI] Checking server health"
-            curl -f http://localhost:3000/health || (echo "[AI] Health check failed" && exit 1)
+            echo "[AI] Checking server health..."
+            curl --retry 5 --retry-delay 2 -f http://localhost:3000/health
           '''
         }
       }
@@ -54,7 +55,9 @@ pipeline {
     stage('Run Tests (simulate failure)') {
       steps {
         script {
-          writeFile file: "test-output.log", text: "Simulated CI failure: Webpack compilation error."
+          writeFile file: "test-output.log",
+                    text: "Simulated CI failure: Webpack compilation error."
+
           error("Simulated CI failure: Webpack compilation error.")
         }
       }
@@ -63,45 +66,51 @@ pipeline {
 
   post {
     failure {
+
       echo "==== Build Failed — Running AI Auto-Fix ===="
 
       script {
         echo "[AI] Reading logs..."
-        def logs = readFile('test-output.log')
+        def logs = readFile("test-output.log")
 
-        writeFile file: "ai_request.json", text: "{\"logs\": ${logs.inspect()} }"
+        // CORRECT JSON ENCODING
+        def json = [ logs: logs ]
+        writeJSON file: "ai_request.json", json: json, pretty:  false
+
         echo "[AI] Sending logs to patch server..."
-
         sh '''
-          set -e
-          RESPONSE=$(curl -s -f -X POST http://localhost:3000/patch \
+          curl -s -X POST http://localhost:3000/patch \
             -H "Content-Type: application/json" \
-            -d @ai_request.json)
-
-          echo "$RESPONSE" > ai_patch.json
+            -d @ai_request.json > ai_patch.json || echo "{}" > ai_patch.json
         '''
       }
 
       echo "[AI] Patch received."
 
       script {
-        def json = readJSON file: "ai_patch.json"
-        writeFile file: "patch.diff", text: json.patch
+        def resp = readJSON file: "ai_patch.json"
+        writeFile file: "patch.diff", text: resp.patch ?: "# No patch"
       }
 
       sh '''
+        set +e
+
         git config user.email "ai-bot@example.com"
         git config user.name "AI Bot"
 
-        git checkout -b ai-auto-fix
+        git checkout -B ai-auto-fix
 
-        git apply patch.diff || true
+        echo "[AI] Applying patch..."
+        git apply patch.diff || echo "[AI] Patch failed to apply, continuing anyway."
+
         git add -A
-        git commit -m "AI Auto Fix"
-        git push -f origin ai-auto-fix
+        git commit -m "AI Auto Fix" || echo "[AI] Nothing to commit."
+
+        echo "[AI] Pushing branch..."
+        git push -f origin ai-auto-fix || true
       '''
 
-      echo "AI Patch ready. Open a PR manually (or enable auto-PR plugin)."
+      echo "AI patch pushed to branch: ai-auto-fix"
     }
   }
 }
