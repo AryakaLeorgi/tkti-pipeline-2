@@ -32,7 +32,7 @@ class UserAuth {
         }
 
         // Bug: typo in method name - should be "test" not "tset"
-        if (!/[A-Z]/.tset(password)) {
+        if (!/[A-Z]/.test(password)) {
             errors.push("Password must contain uppercase letter");
         }
 
