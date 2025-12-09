@@ -143,10 +143,40 @@ post {
             if (!diffContent) {
                 echo "[AI] No valid patch produced — skipping PR."
             } else {
-                echo "[AI] Patch received, applying..."
-
-                sh "git apply --check ai_fix.diff || echo 'Patch check failed, continuing...'"
-                sh "git apply ai_fix.diff || echo 'Patch apply failed, will create diagnostic PR'"
+                echo "[AI] Patch received:"
+                echo diffContent
+                
+                // Try multiple patch apply strategies
+                def patchApplied = sh(
+                    script: '''
+                        echo "[AI] Attempting to apply patch..."
+                        
+                        # Strategy 1: Normal apply
+                        if git apply --check ai_fix.diff 2>/dev/null; then
+                            echo "[AI] Patch check passed, applying..."
+                            git apply -v ai_fix.diff && echo "PATCH_SUCCESS" && exit 0
+                        fi
+                        
+                        # Strategy 2: Try with --3way for conflicts
+                        echo "[AI] Trying --3way merge..."
+                        if git apply --3way ai_fix.diff 2>/dev/null; then
+                            echo "PATCH_SUCCESS" && exit 0
+                        fi
+                        
+                        # Strategy 3: Try ignoring whitespace
+                        echo "[AI] Trying with whitespace ignore..."
+                        if git apply --ignore-whitespace ai_fix.diff 2>/dev/null; then
+                            echo "PATCH_SUCCESS" && exit 0
+                        fi
+                        
+                        echo "[AI] All patch strategies failed"
+                        echo "PATCH_FAILED"
+                    ''',
+                    returnStdout: true
+                ).trim()
+                
+                def patchSuccess = patchApplied.contains("PATCH_SUCCESS")
+                echo "[AI] Patch applied successfully: ${patchSuccess}"
 
                 def branch = "ai-fix-${env.BUILD_NUMBER}"
 
