@@ -18,6 +18,20 @@ pipeline {
         }
 
         /* ------------------------------
+         * CHECK PYTHON (for ML classifier)
+         * ------------------------------ */
+        stage("Check Python") {
+            steps {
+                sh '''
+                    echo "=== Python Environment Check ==="
+                    python3 --version || echo "❌ Python3 not found"
+                    pip3 --version || echo "❌ pip3 not found"
+                    echo "================================"
+                '''
+            }
+        }
+
+        /* ------------------------------
          * INSTALL DEPENDENCIES
          * ------------------------------ */
         stage("Install Dependencies") {
