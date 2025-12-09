@@ -61,13 +61,34 @@ stage('Start AI Patch Server') {
 
 
         /* ------------------------------
-         * SIMULATED FAILURE
+         * RUN ACTUAL TESTS
          * ------------------------------ */
-        stage("Run Tests (simulate failure)") {
+        stage("Run Tests") {
             steps {
                 script {
-                    writeFile file: "build_error.log", text: "Simulated Webpack failure\n"
-                    error("Simulated CI failure: Webpack compilation error.")
+                    try {
+                        sh """
+                            cd src
+                            node test.js 2>&1 | tee ../build_error.log
+                        """
+                    } catch (err) {
+                        // Read the source files to give AI context
+                        def errorLog = readFile("build_error.log").trim()
+                        def sourceFiles = ""
+                        
+                        // Read relevant source files for AI context
+                        try {
+                            sourceFiles = "\\n\\n=== SOURCE FILE: src/calculator.js ===\\n" + readFile("src/calculator.js")
+                        } catch (e) { }
+                        try {
+                            sourceFiles += "\\n\\n=== SOURCE FILE: src/test.js ===\\n" + readFile("src/test.js")
+                        } catch (e) { }
+                        
+                        // Write combined error log with source context
+                        writeFile file: "build_error.log", text: errorLog + sourceFiles
+                        
+                        error("Test failed: ${err.message}")
+                    }
                 }
             }
         }

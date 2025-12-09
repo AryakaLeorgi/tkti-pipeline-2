@@ -20,8 +20,8 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Generate a valid fallback patch
-function createFallbackPatch(title, content) {
+// Generate a valid fallback patch for diagnostic
+function createDiagnosticPatch(title, content) {
   const lines = content.split("\n");
   const lineCount = lines.length + 4;
   const patchLines = lines.map(l => `+${l}`).join("\n");
@@ -40,47 +40,82 @@ ${patchLines}
 app.post("/patch", async (req, res) => {
   const logs = req.body.logs || "";
 
-  console.log("Logs received:", logs);
+  console.log("=== Logs received ===");
+  console.log(logs);
+  console.log("=====================");
 
-  const prompt = `You are an AI that generates Git unified diff patches.
+  const prompt = `You are an expert AI that analyzes CI/CD build errors and generates Git unified diff patches to fix the code.
 
-TASK: Analyze the CI build error logs and generate a valid unified diff patch to fix the issue.
+TASK: Analyze the build error logs and source code below. Generate a VALID unified diff patch to fix the bug.
 
-STRICT FORMAT RULES:
-1. Start with: --- a/filename (or --- /dev/null for new files)
-2. Then: +++ b/filename  
-3. Then hunk header: @@ -start,count +start,count @@
-4. Lines starting with - are removed
-5. Lines starting with + are added
-6. Context lines have no prefix (space at start)
-7. NO markdown code blocks, NO backticks, NO extra text
-8. Output ONLY the raw patch content
+CRITICAL RULES FOR PATCH FORMAT:
+1. For modifying existing files use:
+   --- a/path/to/file.js
+   +++ b/path/to/file.js
+   
+2. For new files use:
+   --- /dev/null
+   +++ b/path/to/newfile.js
 
-If you cannot determine a fix, create a diagnostic.md file with the error analysis.
+3. Hunk header format: @@ -start,count +start,count @@
+   - start = line number where changes begin
+   - count = number of lines in that section
 
-LOGS:
-${logs}`;
+4. Line prefixes:
+   - Lines starting with "-" are REMOVED
+   - Lines starting with "+" are ADDED  
+   - Lines with " " (space) are CONTEXT (unchanged)
+
+5. Include 3 lines of context before and after changes
+
+6. NO markdown code blocks (\`\`\`), NO backticks, NO extra explanation
+7. Output ONLY the raw patch content, nothing else
+
+EXAMPLE of a valid patch that fixes a typo:
+--- a/src/calculator.js
++++ b/src/calculator.js
+@@ -23,7 +23,7 @@
+ // Export functions
+ module.exports = {
+     add,
+-    subtrac,  // typo: should be "subtract"
++    subtract,
+     multiply,
+     divide
+ };
+
+BUILD LOGS AND SOURCE CODE:
+${logs}
+
+Generate the patch now:`;
 
   try {
     const result = await model.generateContent(prompt);
     let patch = result.response.text().trim();
 
+    console.log("=== Raw AI Response ===");
+    console.log(patch);
+    console.log("=======================");
+
     // Remove markdown code blocks if present
     patch = patch.replace(/^```[\w]*\n?/gm, "").replace(/\n?```$/gm, "").trim();
 
     // Validate patch has required format
-    if (!patch || !patch.includes("---") || !patch.includes("+++")) {
-      console.log("Invalid patch format, using fallback");
-      patch = createFallbackPatch("AI Analysis", `Error logs:\n${logs}\n\nAI could not generate a specific fix.`);
+    if (!patch || !patch.includes("---") || !patch.includes("+++") || !patch.includes("@@")) {
+      console.log("Invalid patch format detected, using diagnostic fallback");
+      patch = createDiagnosticPatch("AI Analysis", `The AI analyzed the error but could not generate a valid code fix.\n\nError logs:\n${logs}`);
     }
 
-    console.log("Generated patch:", patch);
+    console.log("=== Final Patch ===");
+    console.log(patch);
+    console.log("===================");
+
     res.json({ patch });
 
   } catch (err) {
     console.error("Gemini error:", err.message);
 
-    const fallbackPatch = createFallbackPatch("AI Patch Error", `Gemini API Error: ${err.message}\n\nOriginal logs:\n${logs}`);
+    const fallbackPatch = createDiagnosticPatch("AI Patch Error", `Gemini API Error: ${err.message}\n\nOriginal logs:\n${logs}`);
     res.json({ patch: fallbackPatch });
   }
 });
