@@ -20,61 +20,68 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Generate a valid fallback patch
+function createFallbackPatch(title, content) {
+  const lines = content.split("\n");
+  const lineCount = lines.length + 4;
+  const patchLines = lines.map(l => `+${l}`).join("\n");
+
+  return `--- /dev/null
++++ b/diagnostic.md
+@@ -0,0 +1,${lineCount} @@
++# ${title}
++
++## Build Logs
++
+${patchLines}
+`;
+}
+
 app.post("/patch", async (req, res) => {
   const logs = req.body.logs || "";
 
   console.log("Logs received:", logs);
 
-  const prompt = `
-You are an AI that generates Git patches.
+  const prompt = `You are an AI that generates Git unified diff patches.
 
-### TASK
-Given CI build logs, produce a correct unified diff (patch) to fix the error.
+TASK: Analyze the CI build error logs and generate a valid unified diff patch to fix the issue.
 
-### RULES
-- Always return a unified diff starting with --- and +++.
-- If the logs are vague or no fix is possible:
-  - Create a fallback patch that adds a diagnostic.md file containing the logs.
-- NEVER output empty text.
+STRICT FORMAT RULES:
+1. Start with: --- a/filename (or --- /dev/null for new files)
+2. Then: +++ b/filename  
+3. Then hunk header: @@ -start,count +start,count @@
+4. Lines starting with - are removed
+5. Lines starting with + are added
+6. Context lines have no prefix (space at start)
+7. NO markdown code blocks, NO backticks, NO extra text
+8. Output ONLY the raw patch content
 
-### LOGS:
-${logs}
-`;
+If you cannot determine a fix, create a diagnostic.md file with the error analysis.
+
+LOGS:
+${logs}`;
 
   try {
     const result = await model.generateContent(prompt);
     let patch = result.response.text().trim();
 
-    if (!patch || !patch.includes("---")) {
-      patch = `
---- /dev/null
-+++ b/diagnostic.md
-@@ -0,0 +1,5 @@
-# Fallback Diagnostic
-The AI could not determine a fix.
+    // Remove markdown code blocks if present
+    patch = patch.replace(/^```[\w]*\n?/gm, "").replace(/\n?```$/gm, "").trim();
 
-## Logs
-${logs.split("\n").map((l) => "+ " + l).join("\n")}
-`;
+    // Validate patch has required format
+    if (!patch || !patch.includes("---") || !patch.includes("+++")) {
+      console.log("Invalid patch format, using fallback");
+      patch = createFallbackPatch("AI Analysis", `Error logs:\n${logs}\n\nAI could not generate a specific fix.`);
     }
 
+    console.log("Generated patch:", patch);
     res.json({ patch });
 
   } catch (err) {
-    console.error("Gemini error:", err);
+    console.error("Gemini error:", err.message);
 
-    res.json({
-      patch: `
---- /dev/null
-+++ b/diagnostic.md
-@@ -0,0 +1,5 @@
-# AI Patch Error
-Gemini API failed.
-
-## Logs
-${logs}
-`
-    });
+    const fallbackPatch = createFallbackPatch("AI Patch Error", `Gemini API Error: ${err.message}\n\nOriginal logs:\n${logs}`);
+    res.json({ patch: fallbackPatch });
   }
 });
 
