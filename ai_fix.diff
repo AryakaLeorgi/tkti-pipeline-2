@@ -1,0 +1,11 @@
+--- a/src/calculator.js
++++ b/src/calculator.js
+@@ -23,7 +23,7 @@
+ // Export functions - intentional syntax error: missing semicolon and typo
+ module.exports = {
+     add,
+-    subtrac,  // typo: should be "subtract"
++    subtract,
+     multiply,
+     divide
+ };
