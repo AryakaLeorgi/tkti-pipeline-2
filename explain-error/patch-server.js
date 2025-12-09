@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-const express = require("express");
-const bodyParser = require("body-parser");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import express from "express";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.GEMINI_API_KEY;
 
@@ -11,10 +10,10 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey);
-const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 const app = express();
-app.use(bodyParser.json());
+app.use(express.json());
 
 // Health check for Jenkins
 app.get("/health", (req, res) => {
