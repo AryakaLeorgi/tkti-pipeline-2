@@ -162,24 +162,33 @@ post {
                 
                 // Try multiple patch apply strategies
                 def patchApplied = sh(
-                    script: '''
+                    script: '''#!/bin/bash
                         echo "[AI] Attempting to apply patch..."
+                        echo "[AI] Patch content:"
+                        cat ai_fix.diff
+                        echo ""
                         
-                        # Strategy 1: Normal apply
-                        if git apply --check ai_fix.diff 2>/dev/null; then
-                            echo "[AI] Patch check passed, applying..."
+                        # Strategy 1: Normal apply with verbose
+                        echo "[AI] Strategy 1: Normal apply..."
+                        if git apply --check ai_fix.diff 2>&1; then
                             git apply -v ai_fix.diff && echo "PATCH_SUCCESS" && exit 0
                         fi
                         
-                        # Strategy 2: Try with --3way for conflicts
-                        echo "[AI] Trying --3way merge..."
-                        if git apply --3way ai_fix.diff 2>/dev/null; then
+                        # Strategy 2: With fuzz factor (allows context line mismatches)
+                        echo "[AI] Strategy 2: Apply with fuzz factor..."
+                        if git apply -C1 --ignore-whitespace ai_fix.diff 2>&1; then
                             echo "PATCH_SUCCESS" && exit 0
                         fi
                         
-                        # Strategy 3: Try ignoring whitespace
-                        echo "[AI] Trying with whitespace ignore..."
-                        if git apply --ignore-whitespace ai_fix.diff 2>/dev/null; then
+                        # Strategy 3: Force apply ignoring context
+                        echo "[AI] Strategy 3: Apply with unidiff-zero..."
+                        if git apply --unidiff-zero ai_fix.diff 2>&1; then
+                            echo "PATCH_SUCCESS" && exit 0
+                        fi
+                        
+                        # Strategy 4: Try 3way merge 
+                        echo "[AI] Strategy 4: 3-way merge..."
+                        if git apply --3way ai_fix.diff 2>&1; then
                             echo "PATCH_SUCCESS" && exit 0
                         fi
                         

@@ -18,7 +18,6 @@ ai_request.json
 ai_patch.json
 ai_fix.diff
 pr.json
-diagnostic.md
 
 # IDE
 .idea/
