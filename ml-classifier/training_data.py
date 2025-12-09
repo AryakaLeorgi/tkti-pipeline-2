@@ -1,11 +1,12 @@
 """
 Training data for error classification model.
-Contains sample error logs for different categories.
-EXPANDED version with more samples for better accuracy.
+LARGE DATASET - 200+ samples for better accuracy.
 """
 
 TRAINING_DATA = [
-    # ===== SYNTAX ERRORS (auto-fixable) =====
+    # ==========================================
+    # SYNTAX ERRORS (auto-fixable) - 35 samples
+    # ==========================================
     {"text": "SyntaxError: Unexpected token '}' at line 45", "category": "syntax_error", "fixable": True, "priority": "high"},
     {"text": "error: expected ';' before '}' token", "category": "syntax_error", "fixable": True, "priority": "high"},
     {"text": "ParseError: Missing closing bracket", "category": "syntax_error", "fixable": True, "priority": "high"},
@@ -21,8 +22,30 @@ TRAINING_DATA = [
     {"text": "error: expected expression before ','", "category": "syntax_error", "fixable": True, "priority": "high"},
     {"text": "IndentationError: expected an indented block", "category": "syntax_error", "fixable": True, "priority": "high"},
     {"text": "IndentationError: unexpected indent", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: Unterminated string constant", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error: missing semicolon at end of statement", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: Invalid or unexpected token", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "ParseError: syntax error, unexpected T_STRING", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error TS1005: ';' expected", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: missing } after function body", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error: expected '=' before ';' token", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: Unexpected token '<'", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error: unrecognized token near '}'", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: missing variable name", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error TS2322: Type mismatch", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: redeclaration of formal parameter", "category": "syntax_error", "fixable": True, "priority": "medium"},
+    {"text": "error: missing closing parenthesis", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "ParseError: Adjacent JSX elements must be wrapped", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: Unexpected keyword 'return'", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error: unterminated comment", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: expected property name, got '}'", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "error TS2339: Property does not exist on type", "category": "syntax_error", "fixable": True, "priority": "high"},
+    {"text": "SyntaxError: Duplicate parameter name not allowed", "category": "syntax_error", "fixable": True, "priority": "medium"},
+    {"text": "error: parse error near unexpected token", "category": "syntax_error", "fixable": True, "priority": "high"},
     
-    # ===== RUNTIME ERRORS (auto-fixable) =====
+    # ==========================================
+    # RUNTIME ERRORS (auto-fixable) - 35 samples
+    # ==========================================
     {"text": "TypeError: Cannot read property 'length' of undefined", "category": "runtime_error", "fixable": True, "priority": "high"},
     {"text": "ReferenceError: myVariable is not defined", "category": "runtime_error", "fixable": True, "priority": "high"},
     {"text": "TypeError: .tset is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
@@ -38,8 +61,30 @@ TRAINING_DATA = [
     {"text": "TypeError: Cannot convert undefined to object", "category": "runtime_error", "fixable": True, "priority": "high"},
     {"text": "TypeError: object is not iterable", "category": "runtime_error", "fixable": True, "priority": "high"},
     {"text": "ZeroDivisionError: division by zero", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: 'str' object is not callable", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "ValueError: invalid literal for int() with base 10", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: Cannot set property of undefined", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "ReferenceError: document is not defined", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: .forEach is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "IndexError: list index out of range", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: unsupported operand type(s)", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "KeyError: 'missing_key' not found", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: .push is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "AttributeError: object has no attribute 'append'", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "RangeError: Maximum call stack size exceeded", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: .split is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: Cannot destructure property", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "Uncaught ReferenceError: React is not defined", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: .includes is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: /[A-Z]/.tset is not a function at validatePassword", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "TypeError: regex.tset is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "Runtime Error: method tset does not exist", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "Uncaught TypeError: pattern.tset is not a function", "category": "runtime_error", "fixable": True, "priority": "high"},
+    {"text": "Error: .tset is not a valid method on RegExp", "category": "runtime_error", "fixable": True, "priority": "high"},
     
-    # ===== TEST FAILURES (auto-fixable) =====
+    # ==========================================
+    # TEST FAILURES (auto-fixable) - 35 samples
+    # ==========================================
     {"text": "AssertionError: Expected true but got false", "category": "test_failure", "fixable": True, "priority": "high"},
     {"text": "FAIL: test_user_login - assertion failed", "category": "test_failure", "fixable": True, "priority": "high"},
     {"text": "Test failed: expected 5 but received 4", "category": "test_failure", "fixable": True, "priority": "medium"},
@@ -55,8 +100,30 @@ TRAINING_DATA = [
     {"text": "AssertionError [ERR_ASSERTION]: Input A expected to strictly equal input B", "category": "test_failure", "fixable": True, "priority": "high"},
     {"text": "TypeError: /[A-Z]/.tset is not a function at UserAuth.validatePassword", "category": "test_failure", "fixable": True, "priority": "high"},
     {"text": "Ran 5 tests, 1 failed, 4 passed", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "FAIL src/components/Button.test.js", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "✕ renders correctly (12 ms)", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Expected: null Received: undefined", "category": "test_failure", "fixable": True, "priority": "medium"},
+    {"text": "Snapshot does not match stored snapshot", "category": "test_failure", "fixable": True, "priority": "medium"},
+    {"text": "expect(element).toBeInTheDocument() - element not found", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "AssertionError: expected [] to deeply equal [1, 2, 3]", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Test suite failed to run - Cannot find module", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "● Test suite failed to run at src/App.test.js", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "FAIL: test_password_validation - TypeError", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Expected output: 'valid' Actual output: 'invalid'", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Unit test failed: assert_equal returned false", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Error in test: TypeError .tset is not a function in auth.js", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Test Error: validatePassword threw TypeError", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Assertion failed at line 41 in test.js", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "FAILURES!!! Tests run: 10, Failures: 1", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "✗ FAIL: Password validation should accept valid passwords", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "npm test failed with exit code 1", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "node test.js exited with error code 1", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Running UserAuth Unit Tests... 1 test failed", "category": "test_failure", "fixable": True, "priority": "high"},
+    {"text": "Test exited with failure - see output above", "category": "test_failure", "fixable": True, "priority": "high"},
     
-    # ===== DEPENDENCY ERRORS (not auto-fixable) =====
+    # ==========================================
+    # DEPENDENCY ERRORS (not auto-fixable) - 35 samples
+    # ==========================================
     {"text": "npm ERR! 404 Not Found - package-name@1.0.0", "category": "dependency_error", "fixable": False, "priority": "high"},
     {"text": "ERESOLVE unable to resolve dependency tree", "category": "dependency_error", "fixable": False, "priority": "high"},
     {"text": "pip install failed: No matching distribution found", "category": "dependency_error", "fixable": False, "priority": "medium"},
@@ -72,8 +139,30 @@ TRAINING_DATA = [
     {"text": "Package 'libssl-dev' has no installation candidate", "category": "dependency_error", "fixable": False, "priority": "high"},
     {"text": "npm ERR! code E401 Unauthorized - authentication required", "category": "dependency_error", "fixable": False, "priority": "high"},
     {"text": "Error: Cannot find module '@babel/core'", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "pip: No such option: --user on externally managed environment", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm ERR! code ELIFECYCLE", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "yarn install failed: Project not found", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm ERR! code EACCES permission denied", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "Could not find a version that satisfies the requirement", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm audit found 15 moderate severity vulnerabilities", "category": "dependency_error", "fixable": False, "priority": "medium"},
+    {"text": "Error: getaddrinfo ENOTFOUND registry.npmjs.org", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm ERR! cb() never called during npm install", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "The engine 'node' is incompatible with this module", "category": "dependency_error", "fixable": False, "priority": "medium"},
+    {"text": "npm WARN npm does not support Node.js v10", "category": "dependency_error", "fixable": False, "priority": "medium"},
+    {"text": "npm ERR! code EINTEGRITY - sha512 integrity check failed", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "Error: unable to access npm registry - network error", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "pip install error: Could not install packages due to OSError", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm install exited with code 1 - dependency conflict", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "requirements.txt: Package version conflict detected", "category": "dependency_error", "fixable": False, "priority": "medium"},
+    {"text": "npm ERR! Missing required argument #1", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "pip: ERROR: No matching distribution found for package", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "npm ERR! notarget No matching version found", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "Error installing gems: bundle install failed", "category": "dependency_error", "fixable": False, "priority": "high"},
+    {"text": "composer install failed: Your requirements could not be resolved", "category": "dependency_error", "fixable": False, "priority": "high"},
     
-    # ===== CONFIG ERRORS (not auto-fixable) =====
+    # ==========================================
+    # CONFIG ERRORS (not auto-fixable) - 35 samples
+    # ==========================================
     {"text": "Error: Missing required environment variable DATABASE_URL", "category": "config_error", "fixable": False, "priority": "high"},
     {"text": "ConfigurationError: Invalid config file format", "category": "config_error", "fixable": False, "priority": "high"},
     {"text": "Error: PORT is not defined in .env file", "category": "config_error", "fixable": False, "priority": "medium"},
@@ -89,8 +178,30 @@ TRAINING_DATA = [
     {"text": "Error: JENKINS_HOME not set", "category": "config_error", "fixable": False, "priority": "high"},
     {"text": "Cannot read property 'apiKey' of undefined in config", "category": "config_error", "fixable": False, "priority": "high"},
     {"text": "Environment variable AWS_ACCESS_KEY_ID not set", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: MONGODB_URI environment variable is required", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Configuration file .env not found", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: Invalid configuration - 'host' is required", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Failed to load config from environment", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "ConfigError: Missing 'database' section in config.yml", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: JWT_SECRET environment variable not defined", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "REDIS_URL must be set for production", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error parsing docker-compose.yml: invalid syntax", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "Failed to read .npmrc - permission denied", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "tsconfig.json: Property 'compilerOptions' is required", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "webpack.config.js: Invalid configuration object", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: GOOGLE_APPLICATION_CREDENTIALS not set", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": ".env.local: Syntax error at line 15", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "Error: NODE_ENV must be 'development', 'production', or 'test'", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "Config Error: SSL certificate path not found", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: Missing required field 'version' in package.json", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "GITHUB_TOKEN not configured in Jenkins credentials", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "Error: SMTP_HOST configuration is missing", "category": "config_error", "fixable": False, "priority": "medium"},
+    {"text": "Apache: Invalid configuration directive 'ServerName'", "category": "config_error", "fixable": False, "priority": "high"},
+    {"text": "nginx: configuration file /etc/nginx/nginx.conf test failed", "category": "config_error", "fixable": False, "priority": "high"},
     
-    # ===== NETWORK ERRORS (not auto-fixable) =====
+    # ==========================================
+    # NETWORK ERRORS (not auto-fixable) - 35 samples
+    # ==========================================
     {"text": "ETIMEDOUT: connection timed out to api.example.com", "category": "network_error", "fixable": False, "priority": "medium"},
     {"text": "ECONNREFUSED: Connection refused at localhost:5432", "category": "network_error", "fixable": False, "priority": "high"},
     {"text": "fetch failed: NetworkError when attempting to fetch resource", "category": "network_error", "fixable": False, "priority": "medium"},
@@ -106,6 +217,26 @@ TRAINING_DATA = [
     {"text": "Error: self signed certificate in certificate chain", "category": "network_error", "fixable": False, "priority": "high"},
     {"text": "DNS lookup failed: SERVFAIL", "category": "network_error", "fixable": False, "priority": "medium"},
     {"text": "net::ERR_CONNECTION_REFUSED", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "ECONNABORTED: timeout of 30000ms exceeded", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Error: Client network socket disconnected", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "503 Service Temporarily Unavailable", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "Error: HPE_INVALID_HEADER_TOKEN in HTTP parsing", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Request failed with status code 502", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "ENETUNREACH: Network is unreachable", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "Error: unable to verify the first certificate", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "FetchError: request to https://api.example.com failed", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Connection reset by peer", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Error: EPROTO SSL routines:ssl3_get_record:wrong version", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "No internet connection available", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "EADDRINUSE: address already in use :::3000", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Proxy error: Could not proxy request", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "curl: (7) Failed to connect to host port 443", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "HTTP Error 500: Internal Server Error", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "unable to access 'https://github.com': Connection timed out", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Error: TLS handshake timeout", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "Failed to fetch: net::ERR_NAME_NOT_RESOLVED", "category": "network_error", "fixable": False, "priority": "medium"},
+    {"text": "SSH: Connection refused on port 22", "category": "network_error", "fixable": False, "priority": "high"},
+    {"text": "Error: EPIPE write after end", "category": "network_error", "fixable": False, "priority": "medium"},
 ]
 
 def get_all_training_data():
