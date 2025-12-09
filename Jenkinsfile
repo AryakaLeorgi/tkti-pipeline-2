@@ -83,7 +83,7 @@ stage('Start AI Patch Server') {
                         
                         // Read relevant source files for AI context
                         try {
-                            sourceFiles = "\n\n=== SOURCE FILE: src/calculator.js ===\n" + readFile("src/calculator.js")
+                            sourceFiles = "\n\n=== SOURCE FILE: src/auth.js ===\n" + readFile("src/auth.js")
                         } catch (e) { }
                         try {
                             sourceFiles += "\n\n=== SOURCE FILE: src/test.js ===\n" + readFile("src/test.js")
@@ -156,20 +156,29 @@ post {
                         git config user.email "ai-bot@autofix"
                         git config user.name "AI Auto Fix Bot"
                         
-                        # Reset to clean state and create branch
+                        # Create new branch for the fix
                         git checkout -b ${branch} || git checkout ${branch}
                         
-                        # Add the generated files, ignoring permission errors
-                        git add diagnostic.md 2>/dev/null || true
-                        git add ai_fix.diff 2>/dev/null || true
-                        git add -A 2>/dev/null || true
+                        # Add ONLY the actual source code changes (not temp files)
+                        # This makes the PR show real file changes like auth.js, not just .diff files
+                        git add src/ 2>/dev/null || true
+                        
+                        # If no source changes, add diagnostic.md as fallback
+                        if git diff --cached --quiet; then
+                            git add diagnostic.md 2>/dev/null || true
+                        fi
                         
                         # Check if there are changes to commit
                         if git diff --cached --quiet; then
-                            echo "No changes to commit"
+                            echo "[AI] No changes detected after applying patch"
                         else
-                            git commit -m "AI Auto-Fix: Build Failure Patch"
+                            # Show what files are being committed
+                            echo "[AI] Files to be committed:"
+                            git diff --cached --name-only
+                            
+                            git commit -m "AI Auto-Fix: ${diffContent.contains('auth.js') ? 'Fixed typo in auth.js' : 'Build failure patch'}"
                             git push https://\${GHTOKEN}@github.com/${GH_REPO}.git ${branch} --force
+                            echo "[AI] Changes pushed to branch: ${branch}"
                         fi
                     """
 

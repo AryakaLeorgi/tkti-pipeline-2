@@ -1,7 +1,14 @@
 {
-  "name": "random-fail-example",
+  "name": "demo-web-app",
   "version": "1.0.0",
+  "description": "Demo web app for CI/CD pipeline testing",
+  "main": "index.js",
   "scripts": {
-    "test": "node random.test.js"
+    "test": "node test.js",
+    "lint": "eslint src/",
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.0.0"
   }
 }

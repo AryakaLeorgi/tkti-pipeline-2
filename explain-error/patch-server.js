@@ -22,7 +22,7 @@ app.get("/health", (req, res) => {
 
 // Generate a valid fallback patch for diagnostic
 function createDiagnosticPatch(title, content) {
-  const lines = content.split("\n");
+  const lines = content.split("\n").slice(0, 50); // Limit to 50 lines
   const lineCount = lines.length + 4;
   const patchLines = lines.map(l => `+${l}`).join("\n");
 
@@ -41,53 +41,47 @@ app.post("/patch", async (req, res) => {
   const logs = req.body.logs || "";
 
   console.log("=== Logs received ===");
-  console.log(logs);
+  console.log(logs.substring(0, 500) + "...");
   console.log("=====================");
 
-  const prompt = `You are an expert AI that analyzes CI/CD build errors and generates Git unified diff patches to fix the code.
+  const prompt = `You are an expert AI code fixer. Your job is to analyze CI/CD build errors and generate a Git unified diff patch to fix the code.
 
-TASK: Analyze the build error logs and source code below. Generate a VALID unified diff patch to fix the bug.
+TASK: Analyze the error logs and source code below. Generate a VALID unified diff patch to fix the bug.
 
-CRITICAL RULES FOR PATCH FORMAT:
-1. For modifying existing files use:
-   --- a/path/to/file.js
-   +++ b/path/to/file.js
+CRITICAL PATCH FORMAT RULES:
+1. For modifying existing files:
+   --- a/src/filename.js
+   +++ b/src/filename.js
    
-2. For new files use:
-   --- /dev/null
-   +++ b/path/to/newfile.js
-
-3. Hunk header format: @@ -start,count +start,count @@
-   - start = line number where changes begin
+2. Hunk header: @@ -start,count +start,count @@
+   - start = line number where chunk begins (1-indexed)
    - count = number of lines in that section
 
-4. Line prefixes:
-   - Lines starting with "-" are REMOVED
-   - Lines starting with "+" are ADDED  
-   - Lines with " " (space) are CONTEXT (unchanged)
+3. Line prefixes (MUST have exactly one space or +/- at start):
+   - Lines with "-" prefix are REMOVED
+   - Lines with "+" prefix are ADDED  
+   - Lines with " " (single space) are CONTEXT (unchanged)
 
-5. Include 3 lines of context before and after changes
+4. Include 2-3 lines of CONTEXT before and after each change
 
-6. NO markdown code blocks (\`\`\`), NO backticks, NO extra explanation
-7. Output ONLY the raw patch content, nothing else
+5. Output ONLY the raw patch. NO markdown, NO backticks, NO explanations.
 
-EXAMPLE of a valid patch that fixes a typo:
---- a/src/calculator.js
-+++ b/src/calculator.js
-@@ -23,7 +23,7 @@
- // Export functions
- module.exports = {
-     add,
--    subtrac,  // typo: should be "subtract"
-+    subtract,
-     multiply,
-     divide
- };
+EXAMPLE - Fixing a typo (.tset → .test):
+--- a/src/auth.js
++++ b/src/auth.js
+@@ -32,7 +32,7 @@
+         }
+         
+         // Bug: typo in method name
+-        if (!/[A-Z]/.tset(password)) {
++        if (!/[A-Z]/.test(password)) {
+             errors.push("Password must contain uppercase letter");
+         }
 
-BUILD LOGS AND SOURCE CODE:
+BUILD ERROR LOGS AND SOURCE CODE:
 ${logs}
 
-Generate the patch now:`;
+Generate the patch to fix this error:`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -100,10 +94,16 @@ Generate the patch now:`;
     // Remove markdown code blocks if present
     patch = patch.replace(/^```[\w]*\n?/gm, "").replace(/\n?```$/gm, "").trim();
 
+    // Remove any leading text before the patch
+    const patchStart = patch.indexOf("--- ");
+    if (patchStart > 0) {
+      patch = patch.substring(patchStart);
+    }
+
     // Validate patch has required format
     if (!patch || !patch.includes("---") || !patch.includes("+++") || !patch.includes("@@")) {
       console.log("Invalid patch format detected, using diagnostic fallback");
-      patch = createDiagnosticPatch("AI Analysis", `The AI analyzed the error but could not generate a valid code fix.\n\nError logs:\n${logs}`);
+      patch = createDiagnosticPatch("AI Analysis", `The AI analyzed the error but could not generate a valid code fix.\n\nError logs:\n${logs.substring(0, 1000)}`);
     }
 
     console.log("=== Final Patch ===");
@@ -115,7 +115,7 @@ Generate the patch now:`;
   } catch (err) {
     console.error("Gemini error:", err.message);
 
-    const fallbackPatch = createDiagnosticPatch("AI Patch Error", `Gemini API Error: ${err.message}\n\nOriginal logs:\n${logs}`);
+    const fallbackPatch = createDiagnosticPatch("AI Patch Error", `Gemini API Error: ${err.message}\n\nOriginal logs:\n${logs.substring(0, 500)}`);
     res.json({ patch: fallbackPatch });
   }
 });
