@@ -79,15 +79,23 @@ stage('Start AI Patch Server') {
         stage('Start ML Classifier') {
             steps {
                 sh '''
-                    echo "[ML] Installing Python dependencies..."
+                    echo "[ML] Setting up Python virtual environment..."
                     cd ml-classifier
-                    pip3 install -r requirements.txt --user --quiet
+                    
+                    # Create venv if not exists
+                    if [ ! -d "venv" ]; then
+                        python3 -m venv venv
+                    fi
+                    
+                    # Activate and install
+                    . venv/bin/activate
+                    pip install -r requirements.txt --quiet
                     
                     echo "[ML] Training models (if not already trained)..."
-                    python3 train.py
+                    python train.py
                     
                     echo "[ML] Starting ML classifier server..."
-                    nohup python3 server.py > ../ml_classifier.log 2>&1 &
+                    nohup python server.py > ../ml_classifier.log 2>&1 &
                     echo $! > /var/lib/jenkins/ml_classifier.pid
                     
                     sleep 3
@@ -195,24 +203,31 @@ post {
             
             echo "[ML] Classification result: ${mlResponse}"
             
-            // Parse ML response
-            def shouldCallLLM = true
-            def errorCategory = "unknown"
-            def mlReason = ""
+            // Parse ML response using jq (readJSON not available without plugin)
+            def shouldCallLLM = sh(
+                script: "echo '${mlResponse}' | jq -r '.should_call_llm // true'",
+                returnStdout: true
+            ).trim() == "true"
             
-            try {
-                def mlJson = readJSON text: mlResponse
-                shouldCallLLM = mlJson.should_call_llm ?: true
-                errorCategory = mlJson.category ?: "unknown"
-                mlReason = mlJson.reason ?: ""
-                
-                echo "[ML] Category: ${errorCategory}"
-                echo "[ML] Fixable: ${mlJson.fixable}"
-                echo "[ML] Should call LLM: ${shouldCallLLM}"
-                echo "[ML] Reason: ${mlReason}"
-            } catch (e) {
-                echo "[ML] Warning: Could not parse ML response, proceeding with LLM"
-            }
+            def errorCategory = sh(
+                script: "echo '${mlResponse}' | jq -r '.category // \"unknown\"'",
+                returnStdout: true
+            ).trim()
+            
+            def mlReason = sh(
+                script: "echo '${mlResponse}' | jq -r '.reason // \"\"'",
+                returnStdout: true
+            ).trim()
+            
+            def isFixable = sh(
+                script: "echo '${mlResponse}' | jq -r '.fixable // false'",
+                returnStdout: true
+            ).trim()
+            
+            echo "[ML] Category: ${errorCategory}"
+            echo "[ML] Fixable: ${isFixable}"
+            echo "[ML] Should call LLM: ${shouldCallLLM}"
+            echo "[ML] Reason: ${mlReason}"
             
             // =============================================
             // STEP 2: CALL LLM (if ML says error is fixable)
