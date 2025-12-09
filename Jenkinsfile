@@ -192,8 +192,8 @@ post {
                         
                         # Strategy 4: Direct sed replacement (specific for .tset -> .test bug)
                         echo "[AI] Strategy 4: Direct sed replacement..."
-                        if grep -q "\.tset(" src/auth.js 2>/dev/null; then
-                            sed -i 's/\.tset(/\.test(/g' src/auth.js
+                        if grep -q ".tset(" src/auth.js 2>/dev/null; then
+                            sed -i 's/.tset(/.test(/g' src/auth.js
                             echo "[AI] Fixed .tset -> .test using sed"
                             echo "PATCH_SUCCESS" && exit 0
                         fi
