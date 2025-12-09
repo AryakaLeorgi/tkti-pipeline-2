@@ -189,9 +189,18 @@ post {
                         # Create new branch for the fix
                         git checkout -b ${branch} || git checkout ${branch}
                         
-                        # Add ONLY the actual source code changes (not temp files)
-                        # This makes the PR show real file changes like auth.js, not just .diff files
-                        git add src/ 2>/dev/null || true
+                        # Reset any staged changes first
+                        git reset HEAD 2>/dev/null || true
+                        
+                        # Add ONLY source code files (exclude node_modules, logs, temp files)
+                        # Use explicit patterns to avoid adding unwanted files
+                        git add src/*.js 2>/dev/null || true
+                        git add src/*.json 2>/dev/null || true
+                        
+                        # Exclude node_modules if accidentally staged
+                        git reset HEAD src/node_modules 2>/dev/null || true
+                        git reset HEAD node_modules 2>/dev/null || true
+                        git reset HEAD explain-error/node_modules 2>/dev/null || true
                         
                         # If no source changes, add diagnostic.md as fallback
                         if git diff --cached --quiet; then

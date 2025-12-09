@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build output
+dist/
+build/
+
+# Logs
+*.log
+build_error.log
+patch_server.log
+
+# Temp files from AI pipeline
+ai_request.json
+ai_patch.json
+ai_fix.diff
+pr.json
+diagnostic.md
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
