@@ -66,31 +66,45 @@ stage('Start AI Patch Server') {
         stage("Run Tests") {
             steps {
                 script {
-                    // Run tests and capture output
+                    // Run tests and capture output - use bash for pipefail support
                     def testResult = sh(
-                        script: '''
+                        script: '''#!/bin/bash
                             set -o pipefail
                             cd src
                             node test.js 2>&1 | tee ../build_error.log
+                            exit $?
                         ''',
                         returnStatus: true
                     )
                     
                     if (testResult != 0) {
                         // Read the source files to give AI context
-                        def errorLog = readFile("build_error.log").trim()
+                        def errorLog = ""
+                        try {
+                            errorLog = readFile("build_error.log").trim()
+                        } catch (e) {
+                            errorLog = "Test failed with exit code: ${testResult}"
+                        }
+                        
                         def sourceFiles = ""
                         
                         // Read relevant source files for AI context
                         try {
                             sourceFiles = "\n\n=== SOURCE FILE: src/auth.js ===\n" + readFile("src/auth.js")
-                        } catch (e) { }
+                        } catch (e) { 
+                            echo "[AI] Warning: Could not read src/auth.js"
+                        }
                         try {
                             sourceFiles += "\n\n=== SOURCE FILE: src/test.js ===\n" + readFile("src/test.js")
-                        } catch (e) { }
+                        } catch (e) { 
+                            echo "[AI] Warning: Could not read src/test.js"
+                        }
                         
                         // Write combined error log with source context
                         writeFile file: "build_error.log", text: errorLog + sourceFiles
+                        
+                        // Also create diagnostic.md in case patch fails
+                        writeFile file: "diagnostic.md", text: "# Build Error\n\n${errorLog}\n\n## Source Files\n${sourceFiles}"
                         
                         error("Test failed with exit code: ${testResult}")
                     }
