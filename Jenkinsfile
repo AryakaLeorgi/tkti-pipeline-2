@@ -73,6 +73,36 @@ stage('Start AI Patch Server') {
   }
 }
 
+        /* ------------------------------
+         * START ML CLASSIFIER SERVER
+         * ------------------------------ */
+        stage('Start ML Classifier') {
+            steps {
+                sh '''
+                    echo "[ML] Installing Python dependencies..."
+                    cd ml-classifier
+                    pip3 install -r requirements.txt --user --quiet
+                    
+                    echo "[ML] Training models (if not already trained)..."
+                    python3 train.py
+                    
+                    echo "[ML] Starting ML classifier server..."
+                    nohup python3 server.py > ../ml_classifier.log 2>&1 &
+                    echo $! > /var/lib/jenkins/ml_classifier.pid
+                    
+                    sleep 3
+                    echo "[ML] Checking health..."
+                    curl -s http://localhost:3001/health || {
+                        echo "❌ ML Classifier failed to start!"
+                        cat ../ml_classifier.log
+                        exit 1
+                    }
+                    
+                    echo "[ML] ML Classifier server OK"
+                '''
+            }
+        }
+
 
         /* ------------------------------
          * RUN ACTUAL TESTS
@@ -145,7 +175,64 @@ post {
                 .replace("\"", "\\\"")
                 .replace("\n", "\\n")
 
-            echo "[AI] Sending logs to patch server..."
+            // =============================================
+            // STEP 1: ML CLASSIFICATION (fast, cheap)
+            // =============================================
+            echo "[ML] Classifying error with ML model..."
+            
+            writeFile file: "ml_request.json", text: """{
+                "logs": "${safeLogs}"
+            }"""
+            
+            def mlResponse = sh(
+                script: '''
+                    curl -s -X POST http://localhost:3001/classify \
+                        -H "Content-Type: application/json" \
+                        -d @ml_request.json || echo '{"should_call_llm": true, "category": "unknown", "reason": "ML classifier not available"}'
+                ''',
+                returnStdout: true
+            ).trim()
+            
+            echo "[ML] Classification result: ${mlResponse}"
+            
+            // Parse ML response
+            def shouldCallLLM = true
+            def errorCategory = "unknown"
+            def mlReason = ""
+            
+            try {
+                def mlJson = readJSON text: mlResponse
+                shouldCallLLM = mlJson.should_call_llm ?: true
+                errorCategory = mlJson.category ?: "unknown"
+                mlReason = mlJson.reason ?: ""
+                
+                echo "[ML] Category: ${errorCategory}"
+                echo "[ML] Fixable: ${mlJson.fixable}"
+                echo "[ML] Should call LLM: ${shouldCallLLM}"
+                echo "[ML] Reason: ${mlReason}"
+            } catch (e) {
+                echo "[ML] Warning: Could not parse ML response, proceeding with LLM"
+            }
+            
+            // =============================================
+            // STEP 2: CALL LLM (if ML says error is fixable)
+            // =============================================
+            if (!shouldCallLLM) {
+                echo "[AI] Skipping LLM - ${mlReason}"
+                writeFile file: "diagnostic.md", text: """# Error Classification
+
+## ML Analysis
+- **Category**: ${errorCategory}
+- **Reason**: ${mlReason}
+
+## Error Logs
+${logs}
+
+---
+*This error type cannot be auto-fixed. Manual intervention required.*
+"""
+            } else {
+                echo "[AI] Sending logs to LLM (Gemini)..."
 
             // Write temp request body
             writeFile file: "ai_request.json", text: """{
@@ -285,14 +372,19 @@ post {
 
                 echo "[AI] Pull request created successfully!"
             }
+            } // End if(shouldCallLLM)
         }
 
-        echo "[AI] Cleaning up patch server..."
+        echo "[AI] Cleaning up servers..."
 
         sh '''
             if [ -f /var/lib/jenkins/patch_server.pid ]; then
                 kill $(cat /var/lib/jenkins/patch_server.pid) || true
                 rm /var/lib/jenkins/patch_server.pid
+            fi
+            if [ -f /var/lib/jenkins/ml_classifier.pid ]; then
+                kill $(cat /var/lib/jenkins/ml_classifier.pid) || true
+                rm /var/lib/jenkins/ml_classifier.pid
             fi
         '''
     }
