@@ -34,14 +34,14 @@ pipeline {
          * ------------------------------ */
 stage('Start AI Patch Server') {
   steps {
-    withCredentials([string(credentialsId: 'GEMINI_KEY', variable: 'GEMINI_KEY')]) {
+    withCredentials([string(credentialsId: 'GEMINI_API_KEY', variable: 'GEMINI_API_KEY')]) {
       sh '''
         echo "[AI] Installing dependencies for patch server..."
         cd explain-error
         npm install
 
         echo "[AI] Starting patch server..."
-        nohup env GEMINI_API_KEY="$GEMINI_KEY" node patch-server.js > ../patch_server.log 2>&1 &
+        nohup env GEMINI_API_KEY="$GEMINI_API_KEY" node patch-server.js > ../patch_server.log 2>&1 &
         echo $! > /var/lib/jenkins/patch_server.pid
 
         sleep 3
