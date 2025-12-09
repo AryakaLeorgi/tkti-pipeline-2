@@ -189,35 +189,38 @@ post {
                         # Create new branch for the fix
                         git checkout -b ${branch} || git checkout ${branch}
                         
-                        # Reset any staged changes first
-                        git reset HEAD 2>/dev/null || true
-                        
-                        # Add ONLY source code files (exclude node_modules, logs, temp files)
-                        # Use explicit patterns to avoid adding unwanted files
-                        git add src/*.js 2>/dev/null || true
-                        git add src/*.json 2>/dev/null || true
-                        
-                        # Exclude node_modules if accidentally staged
-                        git reset HEAD src/node_modules 2>/dev/null || true
+                        # Reset ALL staged changes first
+                        git reset HEAD . 2>/dev/null || true
+                    """
+                    
+                    // Use Groovy logic to determine what to add
+                    if (patchSuccess) {
+                        echo "[AI] Patch was successful, adding src/auth.js..."
+                        sh "git add src/auth.js 2>/dev/null || true"
+                    } else {
+                        echo "[AI] Patch failed, adding diagnostic.md..."
+                        sh "git add diagnostic.md 2>/dev/null || true"  
+                    }
+                    
+                    sh """
+                        # Explicitly REMOVE any unwanted files from staging
+                        git reset HEAD src/package-lock.json 2>/dev/null || true
+                        git reset HEAD src/package.json 2>/dev/null || true
+                        git reset HEAD package-lock.json 2>/dev/null || true
                         git reset HEAD node_modules 2>/dev/null || true
-                        git reset HEAD explain-error/node_modules 2>/dev/null || true
+                        git reset HEAD src/node_modules 2>/dev/null || true
                         
-                        # If no source changes, add diagnostic.md as fallback
-                        if git diff --cached --quiet; then
-                            git add diagnostic.md 2>/dev/null || true
-                        fi
+                        # Show what files are staged
+                        echo "[AI] Files staged for commit:"
+                        git diff --cached --name-only
                         
                         # Check if there are changes to commit
                         if git diff --cached --quiet; then
-                            echo "[AI] No changes detected after applying patch"
+                            echo "[AI] No changes to commit"
                         else
-                            # Show what files are being committed
-                            echo "[AI] Files to be committed:"
-                            git diff --cached --name-only
-                            
-                            git commit -m "AI Auto-Fix: ${diffContent.contains('auth.js') ? 'Fixed typo in auth.js' : 'Build failure patch'}"
+                            git commit -m "AI Auto-Fix: ${patchSuccess ? 'Fixed typo in auth.js (.tset -> .test)' : 'Build failure diagnostic'}"
                             git push https://\${GHTOKEN}@github.com/${GH_REPO}.git ${branch} --force
-                            echo "[AI] Changes pushed to branch: ${branch}"
+                            echo "[AI] ✅ Changes pushed to branch: ${branch}"
                         fi
                     """
 
